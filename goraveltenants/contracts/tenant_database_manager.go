@@ -1,5 +1,7 @@
 package contracts
 
+import "gorm.io/gorm"
+
 // TenantDatabaseManager is an interface that defines the methods required to create and delete databases for tenants.
 type TenantDatabaseManager interface {
 	// CreateDatabase creates a database for the given tenant.
@@ -15,5 +17,5 @@ type TenantDatabaseManager interface {
 	MakeConnectionConfig(baseConfig map[string]string, databaseName string) map[string]string
 
 	// SetConnection sets the DB connection that should be used by the tenant database manager.
-	SetConnection(connection string) error
+	SetConnection(connection *gorm.DB) error
 }
