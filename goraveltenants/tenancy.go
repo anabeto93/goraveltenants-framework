@@ -74,9 +74,13 @@ func (t *Tenancy) RunForMultiple(tenants []contracts.Tenant, callback func(tenan
 	}
 
 	if originalTenant != nil {
-		t.Initialize(originalTenant)
+		if err := t.Initialize(originalTenant); err != nil {
+			return err
+		}
 	} else {
-		t.End()
+		if err := t.End(); err != nil {
+			return err
+		}
 	}
 
 	return nil
