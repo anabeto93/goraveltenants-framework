@@ -9,12 +9,14 @@ import (
 	"gorm.io/gorm"
 )
 
+var _ contracts.TenantDatabaseManager = &SQLiteDatabaseManager{}
+
 type SQLiteDatabaseManager struct {
 	connection *gorm.DB
 }
 
-func (m *SQLiteDatabaseManager) SetConnection(connection *gorm.DB) error {
-	m.connection = connection
+func (m *SQLiteDatabaseManager) SetConnection(connection string) error {
+
 	return nil
 }
 
@@ -44,7 +46,7 @@ func (m *SQLiteDatabaseManager) DatabaseExists(name string) bool {
 	return !os.IsNotExist(err)
 }
 
-func (m *SQLiteDatabaseManager) MakeConnectionConfig(baseConfig map[string]string, databaseName string) map[string]string {
+func (m *SQLiteDatabaseManager) MakeConnectionConfig(baseConfig map[string]interface{}, databaseName string) map[string]interface{} {
 	baseConfig["database"] = databasePath(databaseName)
 	return baseConfig
 }

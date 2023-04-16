@@ -64,7 +64,7 @@ func (m *MySQLDatabaseManager) DatabaseExists(name string) bool {
 	return rows.Next()
 }
 
-func (m *MySQLDatabaseManager) MakeConnectionConfig(baseConfig map[string]string, databaseName string) map[string]string {
+func (m *MySQLDatabaseManager) MakeConnectionConfig(baseConfig map[string]interface{}, databaseName string) map[string]interface{} {
 	baseConfig["database"] = databaseName
 	return baseConfig
 }

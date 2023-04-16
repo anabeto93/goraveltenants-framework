@@ -12,24 +12,25 @@ import (
 var _ contracts.DatabaseConfig = &DatabaseConfig{}
 
 type DatabaseConfig struct {
-	tenant contracts.Tenant
-	usernameGenerator func (args ...interface{}) (string, error)
-	passwordGenerator func (args ...interface{}) (string, error)
-	databaseNameGenerator func (args ...interface{}) (string, error)
+	tenant                contracts.Tenant
+	usernameGenerator     func(args ...interface{}) (string, error)
+	passwordGenerator     func(args ...interface{}) (string, error)
+	databaseNameGenerator func(args ...interface{}) (string, error)
 }
 
 func NewDatabaseConfig(tenant contracts.Tenant) *DatabaseConfig {
 	return &DatabaseConfig{
 		tenant: tenant,
-		usernameGenerator: func (tenant contracts.Tenant) (string, error) {
+		usernameGenerator: func(args ...interface{}) (string, error) {
 			return GenerateSecureRandomString(16)
 		},
-		passwordGenerator: func (tenant contracts.Tenant) (string, error) {
+		passwordGenerator: func(args ...interface{}) (string, error) {
 			return GenerateSecureRandomString(32)
 		},
-		databaseNameGenerator: func (tenant contracts.Tenant) (string, error) {
+		databaseNameGenerator: func(args ...interface{}) (string, error) {
+			currentTenant := args[0].(contracts.Tenant)
 			prefix := facades.Config.GetString("tenancy.database.prefix")
-			key := tenant.GetTenantKey()
+			key := currentTenant.GetTenantKey().(string)
 			suffix := facades.Config.GetString("tenancy.database.suffix")
 			return prefix + key + suffix, nil
 		},
@@ -37,7 +38,7 @@ func NewDatabaseConfig(tenant contracts.Tenant) *DatabaseConfig {
 }
 
 func (dc *DatabaseConfig) GetName() string {
-	name := dc.tenant.GetInternal("db_name")
+	name := dc.tenant.GetInternal("db_name").(string)
 
 	if strings.TrimSpace(name) == "" {
 		name, _ = dc.databaseNameGenerator(dc.tenant)
@@ -47,7 +48,7 @@ func (dc *DatabaseConfig) GetName() string {
 }
 
 func (dc *DatabaseConfig) GetUsername() string {
-	name := dc.tenant.GetInternal("db_username")
+	name := dc.tenant.GetInternal("db_username").(string)
 
 	if strings.TrimSpace(name) == "" {
 		name, _ = dc.usernameGenerator(dc.tenant)
@@ -57,7 +58,7 @@ func (dc *DatabaseConfig) GetUsername() string {
 }
 
 func (dc *DatabaseConfig) GetPassword() string {
-	password := dc.tenant.GetInternal("db_password")
+	password := dc.tenant.GetInternal("db_password").(string)
 
 	if strings.TrimSpace(password) == "" {
 		password, _ = dc.passwordGenerator(dc.tenant)
@@ -69,14 +70,14 @@ func (dc *DatabaseConfig) GetPassword() string {
 func (dc *DatabaseConfig) MakeCredentials() {
 	dc.tenant.SetInternal("db_name", dc.GetName())
 
-	if manager, ok := dc.Manager().(contracts.ManagesDatabaseUsers); ok {
+	if _, ok := dc.Manager().(contracts.ManagesDatabaseUsers); ok {
 		dc.tenant.SetInternal("db_username", dc.GetUsername())
 		dc.tenant.SetInternal("db_password", dc.GetPassword())
 	}
 }
 
 func (dc *DatabaseConfig) GetTemplateConnectionName() string {
-	conn := dc.tenant.GetInternal("db_connection")
+	conn := dc.tenant.GetInternal("db_connection").(string)
 
 	if strings.TrimSpace(conn) == "" {
 		conn = facades.Config.GetString("tenancy.database.template_tenant_connection")
@@ -101,7 +102,7 @@ func (dc *DatabaseConfig) Connection() map[string]interface{} {
 }
 
 func (dc *DatabaseConfig) TenantConfig() map[string]interface{} {
-	keys := []string{}
+	var keys []string
 	for key, _ := range dc.tenant.GetAttributes() {
 		if strings.HasPrefix(key, "db_") {
 			keys = append(keys, key)
@@ -140,19 +141,19 @@ func (dc *DatabaseConfig) Manager() contracts.TenantDatabaseManager {
 		manager = &tenant_database_managers.SQLiteDatabaseManager{}
 	}
 
-	manager.SetConnection(dc.GetTemplateConnectionName())
+	_ = manager.SetConnection(dc.GetTemplateConnectionName())
 
 	return manager
 }
 
-func (dc *DatabaseConfig) GeneratePasswordUsing(passwordGenerator func (args ...interface{}) (string, error)) {
+func (dc *DatabaseConfig) GeneratePasswordUsing(passwordGenerator func(args ...interface{}) (string, error)) {
 	dc.passwordGenerator = passwordGenerator
 }
 
-func (dc *DatabaseConfig) GenerateDatabaseNameUsing(databaseNameGenerator func (args ...interface{}) (string, error)) {
+func (dc *DatabaseConfig) GenerateDatabaseNameUsing(databaseNameGenerator func(args ...interface{}) (string, error)) {
 	dc.databaseNameGenerator = databaseNameGenerator
 }
 
-func (dc *DatabaseConfig) GenerateUsernameUsing(usernameGenerator func (args ...interface{}) (string, error)) {
+func (dc *DatabaseConfig) GenerateUsernameUsing(usernameGenerator func(args ...interface{}) (string, error)) {
 	dc.usernameGenerator = usernameGenerator
 }
