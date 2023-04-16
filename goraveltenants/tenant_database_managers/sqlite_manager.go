@@ -6,17 +6,16 @@ import (
 	"path/filepath"
 
 	"github.com/anabeto93/goraveltenants/contracts"
-	"gorm.io/gorm"
 )
 
 var _ contracts.TenantDatabaseManager = &SQLiteDatabaseManager{}
 
 type SQLiteDatabaseManager struct {
-	connection *gorm.DB
+	connection string
 }
 
 func (m *SQLiteDatabaseManager) SetConnection(connection string) error {
-
+	m.connection = connection
 	return nil
 }
 
@@ -29,7 +28,7 @@ func (m *SQLiteDatabaseManager) CreateDatabase(tenant contracts.TenantWithDataba
 	if err != nil {
 		return false
 	}
-	file.Close()
+	defer file.Close()
 	return true
 }
 

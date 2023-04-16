@@ -1,30 +1,18 @@
 package goraveltenants
 
 import (
-	"context"
 	"errors"
-	"github.com/goravel/framework/facades"
-	"github.com/goravel/framework/contracts/database/orm"
 	"github.com/anabeto93/goraveltenants/contracts"
 	"github.com/anabeto93/goraveltenants/database/models"
+	"github.com/goravel/framework/facades"
 )
 
 var _ contracts.Tenancy = &Tenancy{}
 
 type Tenancy struct {
 	models.Tenant
-	initialized       bool
-	getBootstrappers  func(tenant contracts.Tenant) []contracts.TenancyBootstrapper
-	withTransactionFn func(ctx context.Context, fn func(tx orm.Transaction) error) error
-}
-
-func NewTenancy(withTransactionFn func(ctx context.Context, fn func(tx orm.Transaction) error) error) *Tenancy {
-	return &Tenancy{
-		Tenant:            nil,
-		initialized:       false,
-		getBootstrappers:  nil,
-		withTransactionFn: withTransactionFn,
-	}
+	initialized      bool
+	getBootstrappers func(tenant contracts.Tenant) []contracts.TenancyBootstrapper
 }
 
 func (t *Tenancy) Initialize(tenant contracts.Tenant) error {
@@ -37,10 +25,13 @@ func (t *Tenancy) Initialize(tenant contracts.Tenant) error {
 	}
 
 	if t.initialized {
-		t.End()
+		if err := t.End(); err != nil {
+			return err
+		}
 	}
 
-	t.Tenant = tenant
+	temp := tenant.(models.Tenant)
+	t.Tenant = tenant.(models.Tenant)
 	t.initialized = true
 
 	// Emit events here if necessary
@@ -58,21 +49,13 @@ func (t *Tenancy) End() error {
 	// Emit events here if necessary
 
 	t.initialized = false
-	t.Tenant = nil
+	t.Tenant = models.Tenant{}
 
 	return nil
 }
 
 func (t *Tenancy) GetBootstrappers() []contracts.TenancyBootstrapper {
-	resolve := t.getBootstrappers
-	if resolve == nil {
-		resolve = func(tenant contracts.Tenant) []contracts.TenancyBootstrapper {
-			bootstrappers := facades.Config.Get("tenancy.bootstrappers").([]contracts.TenancyBootstrapper)
-			return bootstrappers
-		}
-	}
-
-	return resolve(t.Tenant)
+	return facades.Config.Get("tenancy.bootstrappers").([]contracts.TenancyBootstrapper)
 }
 
 func (t *Tenancy) RunForMultiple(tenants []contracts.Tenant, callback func(tenant contracts.Tenant) error) error {
@@ -97,12 +80,4 @@ func (t *Tenancy) RunForMultiple(tenants []contracts.Tenant, callback func(tenan
 	}
 
 	return nil
-}
-
-func (t *Tenancy) Query() orm.Query {
-	return t.Tenant.Model().Query()
-}
-
-func (t *Tenancy) WithTransaction(ctx context.Context, fn func(tx orm.Transaction) error) error {
-	return t.withTransactionFn(ctx, fn)
 }

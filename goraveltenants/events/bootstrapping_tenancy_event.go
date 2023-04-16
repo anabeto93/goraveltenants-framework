@@ -1,8 +1,8 @@
 package events
 
 import (
-	eventcontracts "github.com/anabeto93/goraveltenants/events/contracts"
 	"github.com/anabeto93/goraveltenants/contracts"
+	eventcontracts "github.com/anabeto93/goraveltenants/events/contracts"
 )
 
 var _ eventcontracts.TenancyEvent = &BootstrappingTenancy{}
@@ -15,6 +15,6 @@ func (bt *BootstrappingTenancy) Name() string {
 	return "BootstrappingTenancy"
 }
 
-func NewBootstrappingTenancyEvent(tenant contracts.Tenant) *BootstrappingTenancy {
+func NewBootstrappingTenancyEvent(tenant contracts.Tenancy) *BootstrappingTenancy {
 	return eventcontracts.NewTenancyEvent("BootstrappingTenancy", tenant).(*BootstrappingTenancy)
 }

@@ -4,9 +4,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anabeto93/goraveltenants/contracts"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"github.com/anabeto93/goraveltenants/contracts"
 )
 
 var _ contracts.Tenant = &Tenant{}
@@ -26,10 +26,6 @@ func (t *Tenant) TableName() string {
 	return "tenants"
 }
 
-func internalPrefix() string {
-	return "tenancy_"
-}
-
 func (t *Tenant) GetInternal(key string) interface{} {
 	lowerKey := strings.ToLower(key)
 
@@ -46,7 +42,7 @@ func (t *Tenant) GetInternal(key string) interface{} {
 		return t.TenancyDbUsername
 	case "tenancy_db_password":
 		return t.TenancyDbPassword
-	case "keypath":
+	case "key_path":
 		return t.KeyPath
 	case "data":
 		return t.Data
@@ -79,15 +75,15 @@ func (t *Tenant) SetInternal(key string, value interface{}) {
 }
 
 func (t *Tenant) GetAttributes() map[string]interface{} {
-	var attributes map[string]interface{} = map[string]interface{} {
-		"id": 					t.ID,
-		"created_at": 			t.CreatedAt,
-		"updated_at": 			t.UpdatedAt,
-		"deleted_at": 			t.DeletedAt,
-		"tenancy_db_username": 	t.TenancyDbUsername,
-		"tenancy_db_password": 	t.TenancyDbPassword,
-		"key_path": 			t.KeyPath,
-		"data": 				t.Data,
+	var attributes = map[string]interface{}{
+		"id":                  t.ID,
+		"created_at":          t.CreatedAt,
+		"updated_at":          t.UpdatedAt,
+		"deleted_at":          t.DeletedAt,
+		"tenancy_db_username": t.TenancyDbUsername,
+		"tenancy_db_password": t.TenancyDbPassword,
+		"key_path":            t.KeyPath,
+		"data":                t.Data,
 	}
 
 	return attributes

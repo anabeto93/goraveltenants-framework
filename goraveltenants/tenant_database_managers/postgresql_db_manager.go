@@ -1,17 +1,19 @@
 package tenant_database_managers
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/goravel/framework/facades"
 
 	"github.com/anabeto93/goraveltenants/contracts"
 	"github.com/anabeto93/goraveltenants/exceptions"
-	"gorm.io/gorm"
 )
 
 var _ contracts.TenantDatabaseManager = &PostgresDatabaseManager{}
 
 type PostgresDatabaseManager struct {
-	connection string
+	connection   string
+	dbConnection *sql.DB
 }
 
 func (p *PostgresDatabaseManager) SetConnection(connection string) error {
@@ -19,11 +21,23 @@ func (p *PostgresDatabaseManager) SetConnection(connection string) error {
 	return nil
 }
 
-func (p *PostgresDatabaseManager) database() (*gorm.DB, error) {
-	if p.connection == nil {
+func (p *PostgresDatabaseManager) database() (*sql.DB, error) {
+	if p.connection == "" {
 		return nil, exceptions.NewNoConnectionSetException("PostgresDatabaseManager")
 	}
-	return p.connection, nil
+
+	if p.dbConnection != nil {
+		return p.dbConnection, nil
+	}
+
+	connection, err := facades.Orm.Connection(p.connection).DB()
+	if err != nil {
+		return nil, err
+	}
+
+	p.dbConnection = connection
+
+	return connection, nil
 }
 
 func (p *PostgresDatabaseManager) CreateDatabase(tenant contracts.TenantWithDatabase) bool {
@@ -31,8 +45,9 @@ func (p *PostgresDatabaseManager) CreateDatabase(tenant contracts.TenantWithData
 	if err != nil {
 		return false
 	}
-	sql := fmt.Sprintf(`CREATE DATABASE "%s"  WITH TEMPLATE=template0`, tenant.Database().GetName())
-	return db.Exec(sql).Error == nil
+	sqlStmt := fmt.Sprintf(`CREATE DATABASE "%s"  WITH TEMPLATE=template0`, tenant.Database().GetName())
+	_, err = db.Exec(sqlStmt)
+	return err == nil
 }
 
 func (p *PostgresDatabaseManager) DeleteDatabase(tenant contracts.TenantWithDatabase) bool {
@@ -40,8 +55,9 @@ func (p *PostgresDatabaseManager) DeleteDatabase(tenant contracts.TenantWithData
 	if err != nil {
 		return false
 	}
-	sql := fmt.Sprintf(`DROP DATABASE "%s"`, tenant.Database().GetName())
-	return db.Exec(sql).Error == nil
+	sqlStmt := fmt.Sprintf(`DROP DATABASE "%s"`, tenant.Database().GetName())
+	_, err = db.Exec(sqlStmt)
+	return err == nil
 }
 
 func (p *PostgresDatabaseManager) DatabaseExists(name string) bool {
@@ -49,12 +65,13 @@ func (p *PostgresDatabaseManager) DatabaseExists(name string) bool {
 	if err != nil {
 		return false
 	}
-	sql := fmt.Sprintf("SELECT datname FROM pg_database WHERE datname = '%s'", name)
-	rows, err := db.Raw(sql).Rows()
+
+	sqlStmt := fmt.Sprintf("SELECT datname FROM pg_database WHERE datname = '%s'", name)
+	rows, err := db.Query(sqlStmt)
 	if err != nil {
 		return false
 	}
-	defer rows.Close()
+
 	return rows.Next()
 }
 

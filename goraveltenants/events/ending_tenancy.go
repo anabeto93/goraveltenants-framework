@@ -15,6 +15,6 @@ func (bt *EndingTenancy) Name() string {
 	return "EndingTenancy"
 }
 
-func NewEndingTenancyEvent(tenant contracts.Tenant) *EndingTenancy {
+func NewEndingTenancyEvent(tenant contracts.Tenancy) *EndingTenancy {
 	return eventcontracts.NewTenancyEvent("EndingTenancy", tenant).(*EndingTenancy)
 }

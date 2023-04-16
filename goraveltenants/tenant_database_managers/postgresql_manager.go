@@ -1,29 +1,43 @@
 package tenant_database_managers
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/goravel/framework/facades"
 
 	"github.com/anabeto93/goraveltenants/contracts"
 	"github.com/anabeto93/goraveltenants/exceptions"
-	"gorm.io/gorm"
 )
 
 var _ contracts.TenantDatabaseManager = &PostgreSQLSchemaManager{}
 
 type PostgreSQLSchemaManager struct {
-	connection *gorm.DB
+	connection   string
+	dbConnection *sql.DB
 }
 
-func (p *PostgreSQLSchemaManager) SetConnection(connection *gorm.DB) error {
+func (p *PostgreSQLSchemaManager) SetConnection(connection string) error {
 	p.connection = connection
 	return nil
 }
 
-func (p *PostgreSQLSchemaManager) database() (*gorm.DB, error) {
-	if p.connection == nil {
+func (p *PostgreSQLSchemaManager) database() (*sql.DB, error) {
+	if p.connection == "" {
 		return nil, exceptions.NewNoConnectionSetException("PostgreSQLSchemaManager")
 	}
-	return p.connection, nil
+
+	if p.dbConnection != nil {
+		return p.dbConnection, nil
+	}
+
+	connection, err := facades.Orm.Connection(p.connection).DB()
+	if err != nil {
+		return nil, err
+	}
+
+	p.dbConnection = connection
+
+	return connection, nil
 }
 
 func (p *PostgreSQLSchemaManager) CreateDatabase(tenant contracts.TenantWithDatabase) bool {
@@ -31,8 +45,9 @@ func (p *PostgreSQLSchemaManager) CreateDatabase(tenant contracts.TenantWithData
 	if err != nil {
 		return false
 	}
-	sql := fmt.Sprintf(`CREATE SCHEMA "%s"`, tenant.Database().GetName())
-	return db.Exec(sql).Error == nil
+	sqlStmt := fmt.Sprintf(`CREATE SCHEMA "%s"`, tenant.Database().GetName())
+	_, err = db.Exec(sqlStmt)
+	return err == nil
 }
 
 func (p *PostgreSQLSchemaManager) DeleteDatabase(tenant contracts.TenantWithDatabase) bool {
@@ -40,8 +55,9 @@ func (p *PostgreSQLSchemaManager) DeleteDatabase(tenant contracts.TenantWithData
 	if err != nil {
 		return false
 	}
-	sql := fmt.Sprintf(`DROP SCHEMA "%s" CASCADE`, tenant.Database().GetName())
-	return db.Exec(sql).Error == nil
+	sqlStmt := fmt.Sprintf(`DROP SCHEMA "%s" CASCADE`, tenant.Database().GetName())
+	_, err = db.Exec(sqlStmt)
+	return err == nil
 }
 
 func (p *PostgreSQLSchemaManager) DatabaseExists(name string) bool {
@@ -49,16 +65,17 @@ func (p *PostgreSQLSchemaManager) DatabaseExists(name string) bool {
 	if err != nil {
 		return false
 	}
-	sql := fmt.Sprintf("SELECT schema_name FROM information_schema.schemata WHERE schema_name = '%s'", name)
-	rows, err := db.Raw(sql).Rows()
+
+	sqlStmt := fmt.Sprintf("SELECT schema_name FROM information_schema.schemata WHERE schema_name = '%s'", name)
+	rows, err := db.Query(sqlStmt)
 	if err != nil {
 		return false
 	}
-	defer rows.Close()
+
 	return rows.Next()
 }
 
-func (p *PostgreSQLSchemaManager) MakeConnectionConfig(baseConfig map[string]string, databaseName string) map[string]string {
+func (p *PostgreSQLSchemaManager) MakeConnectionConfig(baseConfig map[string]interface{}, databaseName string) map[string]interface{} {
 	baseConfig["search_path"] = databaseName
 	return baseConfig
 }

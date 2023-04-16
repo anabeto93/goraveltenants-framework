@@ -1,10 +1,10 @@
 package tenant_database_managers
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
-	"gorm.io/gorm"
 	"github.com/anabeto93/goraveltenants/contracts"
 )
 
@@ -24,37 +24,63 @@ var grants = []string{
 func (m *PermissionControlledMySQLDatabaseManager) CreateUser(databaseConfig contracts.DatabaseConfig) bool {
 	database := databaseConfig.GetName()
 	username := databaseConfig.GetUsername()
-	hostname := databaseConfig.Connection()["host"]
 	password := databaseConfig.GetPassword()
 
-	m.connection.Exec(fmt.Sprintf("CREATE USER `%s`@`%%` IDENTIFIED BY '%s'", username, password))
+	//m.connection.Exec(fmt.Sprintf("CREATE USER `%s`@`%%` IDENTIFIED BY '%s'", username, password))
+	db, err := m.database()
+	if err != nil {
+		return false
+	}
+	if _, err = db.Exec(fmt.Sprintf("CREATE USER `%s`@`%%` IDENTIFIED BY '%s'", username, password)); err != nil {
+		return false
+	}
 
 	grantList := strings.Join(grants, ", ")
 
 	var grantQuery string
-	if isVersion8(m.connection) {
+	if isVersion8(db) {
 		grantQuery = fmt.Sprintf("GRANT %s ON `%s`.* TO `%s`@`%%`", grantList, database, username)
 	} else {
 		grantQuery = fmt.Sprintf("GRANT %s ON `%s`.* TO `%s`@`%%` IDENTIFIED BY '%s'", grantList, database, username, password)
 	}
 
-	return m.connection.Exec(grantQuery).Error == nil
+	_, err = db.Exec(grantQuery)
+	return err == nil
 }
 
-func isVersion8(db *gorm.DB) bool {
+func isVersion8(db *sql.DB) bool {
 	var version string
-	db.Raw("SELECT VERSION()").Row().Scan(&version)
-
-	return strings.HasPrefix(version, "8.")
+	err := db.QueryRow("SELECT VERSION();").Scan(&version)
+	if err != nil {
+		// handle error
+	}
+	majorVersion := strings.Split(version, ".")[0]
+	if majorVersion >= "8" {
+		return true
+	}
+	return false
 }
 
 func (m *PermissionControlledMySQLDatabaseManager) DeleteUser(databaseConfig contracts.DatabaseConfig) bool {
 	username := databaseConfig.GetUsername()
-	return m.connection.Exec(fmt.Sprintf("DROP USER IF EXISTS `%s`@`%%`", username)).Error == nil
+	db, err := m.database()
+	if err != nil {
+		return false
+	}
+
+	_, err = db.Exec(fmt.Sprintf("DROP USER IF EXISTS `%s`@`%%`", username))
+	return err == nil
 }
 
 func (m *PermissionControlledMySQLDatabaseManager) UserExists(username string) bool {
+	db, err := m.database()
+	if err != nil {
+		return false
+	}
 	var count int
-	m.connection.Raw(fmt.Sprintf("SELECT COUNT(*) FROM mysql.user WHERE user = '%s'", username)).Row().Scan(&count)
+	err = db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM mysql.user WHERE user = '%s'", username)).Scan(&count)
+	if err != nil {
+		return false
+	}
 	return count > 0
 }
