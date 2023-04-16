@@ -6,7 +6,10 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"github.com/anabeto93/goraveltenants/contracts"
 )
+
+var _ contracts.Tenant = &Tenant{}
 
 type Tenant struct {
 	ID                uuid.UUID      `gorm:"type:uuid;primary_key;unique" json:"id"`
@@ -73,4 +76,31 @@ func (t *Tenant) SetInternal(key string, value interface{}) {
 	case "data":
 		t.Data = value.(string)
 	}
+}
+
+func (t *Tenant) GetAttributes() map[string]interface{} {
+	var attributes map[string]interface{} = map[string]interface{} {
+		"id": 					t.ID,
+		"created_at": 			t.CreatedAt,
+		"updated_at": 			t.UpdatedAt,
+		"deleted_at": 			t.DeletedAt,
+		"tenancy_db_username": 	t.TenancyDbUsername,
+		"tenancy_db_password": 	t.TenancyDbPassword,
+		"key_path": 			t.KeyPath,
+		"data": 				t.Data,
+	}
+
+	return attributes
+}
+
+func (t *Tenant) GetTenantKeyName() string {
+	return "id"
+}
+
+func (t *Tenant) GetTenantKey() interface{} {
+	return t.GetInternal(t.GetTenantKeyName())
+}
+
+func (t *Tenant) Run(callback func(args ...interface{}) (interface{}, error)) (interface{}, error) {
+	return callback(t)
 }

@@ -179,4 +179,4 @@ require (
 	gorm.io/plugin/dbresolver v1.4.1 // indirect
 )
 
-replace github.com/yourusername/goraveltenants => ../goraveltenants
+replace github.com/anabeto93/goraveltenants => ../goraveltenants

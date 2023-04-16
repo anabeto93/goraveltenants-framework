@@ -12,7 +12,7 @@ type TenantDatabaseManager interface {
 	DatabaseExists(name string) bool
 
 	// MakeConnectionConfig creates a DB connection config array for the given database name.
-	MakeConnectionConfig(baseConfig map[string]string, databaseName string) map[string]string
+	MakeConnectionConfig(baseConfig map[string]interface{}, databaseName string) map[string]interface{}
 
 	// SetConnection sets the DB connection that should be used by the tenant database manager.
 	SetConnection(connection string) error

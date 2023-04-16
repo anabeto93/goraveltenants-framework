@@ -18,5 +18,5 @@ type Tenant interface {
 	GetAttributes() map[string]interface{}
 
 	// Run runs a callback in this tenant's environment.
-	Run(callback func())
+	Run(callback func(args ...interface{}) (interface{}, error)) (interface{}, error)
 }

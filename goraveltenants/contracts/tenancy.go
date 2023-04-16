@@ -6,6 +6,7 @@ import (
 )
 
 type Tenancy interface {
+	Tenant
 	Initialize(tenant Tenant) error
 	End() error
 	GetBootstrappers() []TenancyBootstrapper

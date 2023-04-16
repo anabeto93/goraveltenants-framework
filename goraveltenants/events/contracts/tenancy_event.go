@@ -7,19 +7,23 @@ type TenancyEvent interface {
 	GetTenant() contracts.Tenant
 }
 
-type tenancyEvent struct {
+type BaseTenancyEvent struct {
 	name string
 	tenant contracts.Tenant
 }
 
-func (e *tenancyEvent) Name() string {
+func (e *BaseTenancyEvent) Name() string {
 	return e.name
 }
 
-func (e *tenancyEvent) GetTenant() contracts.Tenant {
+func (e *BaseTenancyEvent) GetTenant() contracts.Tenant {
 	return e.tenant
 }
 
+func NewBaseTenancy(name string, tenant contracts.Tenant) *BaseTenancyEvent {
+	return &BaseTenancyEvent{name, tenant}
+}
+
 func NewTenancyEvent(name string, tenant contracts.Tenant) TenancyEvent {
-	return &tenancyEvent{name, tenant}
+	return NewBaseTenancy(name, tenant)
 }

@@ -6,10 +6,13 @@ import (
 	"github.com/goravel/framework/facades"
 	"github.com/goravel/framework/contracts/database/orm"
 	"github.com/anabeto93/goraveltenants/contracts"
+	"github.com/anabeto93/goraveltenants/database/models"
 )
 
+var _ contracts.Tenancy = &Tenancy{}
+
 type Tenancy struct {
-	tenant            contracts.Tenant
+	models.Tenant
 	initialized       bool
 	getBootstrappers  func(tenant contracts.Tenant) []contracts.TenancyBootstrapper
 	withTransactionFn func(ctx context.Context, fn func(tx orm.Transaction) error) error
@@ -17,7 +20,7 @@ type Tenancy struct {
 
 func NewTenancy(withTransactionFn func(ctx context.Context, fn func(tx orm.Transaction) error) error) *Tenancy {
 	return &Tenancy{
-		tenant:            nil,
+		Tenant:            nil,
 		initialized:       false,
 		getBootstrappers:  nil,
 		withTransactionFn: withTransactionFn,
@@ -29,7 +32,7 @@ func (t *Tenancy) Initialize(tenant contracts.Tenant) error {
 		return errors.New("tenant cannot be nil")
 	}
 
-	if t.initialized && t.tenant.GetTenantKey() == tenant.GetTenantKey() {
+	if t.initialized && t.Tenant.GetTenantKey() == tenant.GetTenantKey() {
 		return nil
 	}
 
@@ -37,7 +40,7 @@ func (t *Tenancy) Initialize(tenant contracts.Tenant) error {
 		t.End()
 	}
 
-	t.tenant = tenant
+	t.Tenant = tenant
 	t.initialized = true
 
 	// Emit events here if necessary
@@ -55,7 +58,7 @@ func (t *Tenancy) End() error {
 	// Emit events here if necessary
 
 	t.initialized = false
-	t.tenant = nil
+	t.Tenant = nil
 
 	return nil
 }
@@ -69,11 +72,11 @@ func (t *Tenancy) GetBootstrappers() []contracts.TenancyBootstrapper {
 		}
 	}
 
-	return resolve(t.tenant)
+	return resolve(t.Tenant)
 }
 
 func (t *Tenancy) RunForMultiple(tenants []contracts.Tenant, callback func(tenant contracts.Tenant) error) error {
-	originalTenant := t.tenant
+	originalTenant := t.Tenant
 
 	for _, tenant := range tenants {
 		err := t.Initialize(tenant)
@@ -97,7 +100,7 @@ func (t *Tenancy) RunForMultiple(tenants []contracts.Tenant, callback func(tenan
 }
 
 func (t *Tenancy) Query() orm.Query {
-	return t.tenant.Model().Query()
+	return t.Tenant.Model().Query()
 }
 
 func (t *Tenancy) WithTransaction(ctx context.Context, fn func(tx orm.Transaction) error) error {
