@@ -3,18 +3,19 @@ package tenant_database_managers
 import (
 	"fmt"
 
-	"gorm.io/gorm"
 	"github.com/anabeto93/goraveltenants/contracts"
 	"github.com/anabeto93/goraveltenants/exceptions"
+	"github.com/goravel/framework/facades"
+	"gorm.io/gorm"
 )
 
 var _ contracts.TenantDatabaseManager = &MySQLDatabaseManager{}
 
 type MySQLDatabaseManager struct {
-	connection *gorm.DB
+	connection string
 }
 
-func (m *MySQLDatabaseManager) SetConnection(connection *gorm.DB) error {
+func (m *MySQLDatabaseManager) SetConnection(connection string) error {
 	m.connection = connection
 	return nil
 }
@@ -23,7 +24,9 @@ func (m *MySQLDatabaseManager) database() (*gorm.DB, error) {
 	if m.connection == nil {
 		return nil, exceptions.NewNoConnectionSetException("MySQLDatabaseManager")
 	}
-	return m.connection, nil
+
+	connection := facades.Orm.Connection(m.connection).
+	return connection, nil
 }
 
 func (m *MySQLDatabaseManager) CreateDatabase(tenant contracts.TenantWithDatabase) bool {

@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"gorm.io/gorm"
 	"github.com/anabeto93/goraveltenants/contracts"
+	"gorm.io/gorm"
 )
 
 type SQLiteDatabaseManager struct {

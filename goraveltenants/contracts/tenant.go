@@ -14,6 +14,9 @@ type Tenant interface {
 	// SetInternal sets the value of an internal key.
 	SetInternal(key string, value interface{})
 
+	// GetAttributes returns the map[string]interface{} of all the models attributes
+	GetAttributes() map[string]interface{}
+
 	// Run runs a callback in this tenant's environment.
 	Run(callback func())
 }

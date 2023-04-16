@@ -1,19 +1,20 @@
 package goraveltenants
 
 import (
-	"github.com/google/uuid"
-	"github.com/goravel/framework/facades"
 	"github.com/anabeto93/goraveltenants/contracts"
+	"github.com/anabeto93/goraveltenants/exceptions"
+	"github.com/anabeto93/goraveltenants/tenant_database_managers"
+	"github.com/goravel/framework/facades"
 	"strings"
 )
 
 var _ contracts.DatabaseConfig = &DatabaseConfig{}
 
 type DatabaseConfig struct {
-	tenant *contracts.Tenant
+	tenant contracts.Tenant
 }
 
-func NewDatabaseConfig(tenant *contracts.Tenant) *DatabaseConfig {
+func NewDatabaseConfig(tenant contracts.Tenant) *DatabaseConfig {
 	return &DatabaseConfig{tenant: tenant}
 }
 
@@ -67,12 +68,29 @@ func (dc *DatabaseConfig) TenantConfig() map[string]interface{} {
 
 func (dc *DatabaseConfig) Manager() contracts.TenantDatabaseManager {
 	driver := facades.Config.GetString("database.connections." + dc.GetTemplateConnectionName() + ".driver")
-	databaseManagers := facades.Config.GetString("tenancy.database.managers")
+	var databaseManagers map[string]string
+	databaseManagers = facades.Config.Get("tenancy.database.managers").(map[string]string)
 
-	manager, ok := databaseManagers[driver]
+	managerName, ok := databaseManagers[driver]
 	if !ok {
-		panic("DatabaseManagerNotRegisteredException: " + driver)
+		err := exceptions.NewDatabaseManagerNotRegisteredException(driver)
+		panic(err.Error())
 	}
 
-	return manager.(contracts.TenantDatabaseManager)
+	var manager contracts.TenantDatabaseManager
+
+	switch managerName {
+	case "mysql":
+		manager = &tenant_database_managers.MySQLDatabaseManager{}
+	case "pgsql":
+		manager = &tenant_database_managers.PostgreSQLSchemaManager{}
+	case "mysql_permissions":
+		manager = &tenant_database_managers.PermissionControlledMySQLDatabaseManager{}
+	case "sqlite":
+		manager = &tenant_database_managers.SQLiteDatabaseManager{}
+	}
+
+	manager.SetConnection(dc.GetTemplateConnectionName())
+
+	return manager
 }

@@ -1,28 +1,28 @@
-package tenancy
+package goraveltenants
 
 import (
-	"github.com/goravel/framework/cache"
+	"github.com/goravel/framework/facades"
 )
 
 type CacheManager struct {
-	store cache.Store
+	store facades.Cache
 }
 
-func NewCacheManager(store cache.Store) *CacheManager {
+func NewCacheManager(store facades.Cache) *CacheManager {
 	return &CacheManager{
 		store: store,
 	}
 }
 
-func (m *CacheManager) Store(storeName ...string) cache.Store {
+func (m *CacheManager) Store(storeName ...string) facades.Cache {
 	if len(storeName) > 0 {
-		return m.store.Store(storeName[0]).WithTag(m.getTag())
+		return m.store(storeName[0]).WithTag(m.getTag())
 	}
 
 	return m.store.WithTag(m.getTag())
 }
 
-func (m *CacheManager) Tags(names ...string) cache.Store {
+func (m *CacheManager) Tags(names ...string) facades.Cache {
 	return m.store.Tags(append(names, m.getTag())...)
 }
 
