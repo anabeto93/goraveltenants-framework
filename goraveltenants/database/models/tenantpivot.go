@@ -1,15 +1,16 @@
 package models
 
 import (
+	"github.com/anabeto93/goraveltenants/contracts"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type TenantPivot struct {
 	gorm.Model
-	ID        uint      `gorm:"primary_key" json:"id"`
-	TenantID  uuid.UUID `json:"tenant_id"`
-	ParentID  uuid.UUID `json:"parent_id"`
+	ID       uint      `gorm:"primary_key" json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	ParentID uuid.UUID `json:"parent_id"`
 }
 
 func (p *TenantPivot) TableName() string {
@@ -24,7 +25,7 @@ func (p *TenantPivot) BeforeSave(tx *gorm.DB) (err error) {
 		return result.Error
 	}
 
-	if syncable, ok := parent.(Syncable); ok {
+	if syncable, ok := parent.(contracts.Syncable); ok {
 		syncable.TriggerSyncEvent()
 	}
 

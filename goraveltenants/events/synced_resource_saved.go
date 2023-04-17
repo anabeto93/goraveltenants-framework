@@ -1,10 +1,17 @@
 package events
 
-import "github.com/anabeto93/goraveltenants/contracts"
+import (
+	"github.com/anabeto93/goraveltenants/contracts"
+	"github.com/goravel/framework/contracts/event"
+)
 
 type SyncedResourceSaved struct {
 	model  contracts.Syncable
 	tenant contracts.TenantWithDatabase
+}
+
+func (sr *SyncedResourceSaved) Handle(args []event.Arg) ([]event.Arg, error) {
+	return args, nil
 }
 
 func (sr *SyncedResourceSaved) Name() string {

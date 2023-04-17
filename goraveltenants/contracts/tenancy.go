@@ -2,8 +2,8 @@ package contracts
 
 type Tenancy interface {
 	Tenant
-	Initialize(tenant Tenant) error
+	Initialize(tenant interface{}) error
 	End() error
 	GetBootstrappers() []TenancyBootstrapper
-	RunForMultiple(tenants []Tenant, callback func(tenant Tenant) error) error
+	RunForMultiple(tenants []interface{}, callback func(tenant Tenant) error) error
 }

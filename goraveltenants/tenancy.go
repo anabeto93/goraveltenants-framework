@@ -27,11 +27,7 @@ func (t *Tenancy) getDatabaseInstance() (*sql.DB, error) {
 	return connection, nil
 }
 
-type TenantParam interface {
-    ~int | ~string | contracts.Tenant
-}
-
-func (t *Tenancy) Initialize[T TenantParam](tenant T) error {
+func (t *Tenancy) Initialize(tenant interface{}) error {
 	if tenant == nil {
 		return errors.New("tenant cannot be nil")
 	}
@@ -41,18 +37,11 @@ func (t *Tenancy) Initialize[T TenantParam](tenant T) error {
 	case models.Tenant:
 		tenantInstance = v
 	case string, int:
-		tenantModel := models.Tenant{}
-		// Replace with actual logic to find the tenant from the database
-		sqlDB, err := getDatabaseInstance()
+		tenantFound, err := t.findTenantByKey(tenant)
 		if err != nil {
 			return err
 		}
-
-		query := "SELECT * FROM " + tenantModel.TableName() + " WHERE " + tenantModel.GetTenantKeyName() + " = ?"
-		if err := sqlDB.QueryRow(query, tenant).Scan(&tenantModel.ID, &tenantModel.CreatedAt, &tenantModel.UpdatedAt, &tenantModel.DeletedAt, &tenantModel.Data); err != nil {
-			return err
-		}
-		tenantInstance = tenantModel
+		tenantInstance = tenantFound
 	default:
 		return errors.New("invalid tenant type")
 	}
@@ -75,6 +64,21 @@ func (t *Tenancy) Initialize[T TenantParam](tenant T) error {
 	return nil
 }
 
+func (t *Tenancy) findTenantByKey(tenant interface{}) (models.Tenant, error) {
+	tenantModel := models.Tenant{}
+	// Replace with actual logic to find the tenant from the database
+	sqlDB, err := t.getDatabaseInstance()
+	if err != nil {
+		return models.Tenant{}, err
+	}
+
+	query := "SELECT * FROM " + tenantModel.TableName() + " WHERE " + tenantModel.GetTenantKeyName() + " = ?"
+	if err := sqlDB.QueryRow(query, tenant).Scan(&tenantModel.ID, &tenantModel.CreatedAt, &tenantModel.UpdatedAt, &tenantModel.DeletedAt, &tenantModel.Data); err != nil {
+		return models.Tenant{}, err
+	}
+	return tenantModel, nil
+}
+
 func (t *Tenancy) End() error {
 	// Emit events here if necessary
 
@@ -94,16 +98,30 @@ func (t *Tenancy) GetBootstrappers() []contracts.TenancyBootstrapper {
 	return t.GetConfig("tenancy.bootstrappers").([]contracts.TenancyBootstrapper)
 }
 
-func (t *Tenancy) RunForMultiple(tenants []interface{}, callback func(tenant models.Tenant) error) error {
+func (t *Tenancy) RunForMultiple(tenants []interface{}, callback func(tenant contracts.Tenant) error) error {
 	originalTenant := t.Tenant
 
 	for _, tenant := range tenants {
-		err := t.Initialize(tenant)
+		var tenantInstance models.Tenant
+		switch v := tenant.(type) {
+		case models.Tenant:
+			tenantInstance = v
+		case string, int:
+			tenantFound, err := t.findTenantByKey(tenant)
+			if err != nil {
+				return err
+			}
+			tenantInstance = tenantFound
+		default:
+			return errors.New("invalid tenant type")
+		}
+
+		err := t.Initialize(tenantInstance)
 		if err != nil {
 			return err
 		}
 
-		err = callback(t.Tenant)
+		err = callback(&tenantInstance)
 		if err != nil {
 			return err
 		}
