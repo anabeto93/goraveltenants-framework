@@ -3,6 +3,8 @@ package goraveltenants
 import (
 	"database/sql"
 	"errors"
+	"github.com/anabeto93/goraveltenants/events"
+	"github.com/goravel/framework/contracts/event"
 
 	"github.com/anabeto93/goraveltenants/contracts"
 	"github.com/anabeto93/goraveltenants/database/models"
@@ -14,6 +16,13 @@ var _ contracts.Tenancy = &Tenancy{}
 type Tenancy struct {
 	models.Tenant
 	initialized bool
+}
+
+func NewTenancy() *Tenancy {
+	return &Tenancy{
+		Tenant:      models.Tenant{},
+		initialized: false,
+	}
 }
 
 func (t *Tenancy) getDatabaseInstance() (*sql.DB, error) {
@@ -57,9 +66,11 @@ func (t *Tenancy) Initialize(tenant interface{}) error {
 	}
 
 	t.Tenant = tenantInstance
+	facades.Event.Job(events.NewInitializingTenancyEvent(t), []event.Arg{})
+
 	t.initialized = true
 
-	// Emit events here if necessary
+	facades.Event.Job(events.NewTenancyInitializedEvent(t), []event.Arg{})
 
 	return nil
 }
@@ -87,9 +98,10 @@ func (t *Tenancy) End() error {
 	}
 
 	// Emit events here if necessary
-
+	facades.Event.Job(events.NewEndingTenancyEvent(t), []event.Arg{})
 	t.initialized = false
 	t.Tenant = models.Tenant{}
+	facades.Event.Job(events.NewTenancyEndedEvent(t), []event.Arg{})
 
 	return nil
 }
@@ -142,4 +154,25 @@ func (t *Tenancy) RunForMultiple(tenants []interface{}, callback func(tenant con
 
 func (t *Tenancy) GetConfig(key string) interface{} {
 	return facades.Config.Get(key)
+}
+
+func (t *Tenancy) GetCurrentTenant(key ...interface{}) contracts.Tenant {
+	if t.initialized == true {
+		return &t.Tenant
+	}
+
+	// first check that the database.connections.tenant exists
+	tempConn := facades.Config.Get("database.connections.tenant")
+	if tempConn == nil {
+		return nil // it just means there's currently no tenant available
+	}
+	// In our DatabaseManager.CreateTenantConnection(), this is supposed to be a map[string]interface{}
+	if _, ok := tempConn.(map[string]interface{}); !ok {
+		return nil
+	}
+	// by this point it means we might just have a tenant available and currently setup and connected to it
+	sqlDB, err := t.getDatabaseInstance()
+	if err != nil {
+		return nil
+	}
 }

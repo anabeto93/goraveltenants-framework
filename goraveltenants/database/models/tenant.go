@@ -10,16 +10,18 @@ import (
 )
 
 var _ contracts.Tenant = &Tenant{}
+var _ contracts.HasInternalKeys = &Tenant{}
 
 type Tenant struct {
-	ID                uuid.UUID      `gorm:"type:uuid;primary_key;unique" json:"id"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
-	DeletedAt         gorm.DeletedAt `gorm:"index" json:"deleted_at"`
-	TenancyDbUsername string         `gorm:"size:500" json:"tenancy_db_username"`
-	TenancyDbPassword string         `gorm:"size:500" json:"tenancy_db_password"`
-	KeyPath           string         `json:"key_path"`
-	Data              string         `gorm:"type:json" json:"data"`
+	ID                uuid.UUID              `gorm:"type:uuid;primary_key;unique" json:"id"`
+	CreatedAt         time.Time              `json:"created_at"`
+	UpdatedAt         time.Time              `json:"updated_at"`
+	DeletedAt         gorm.DeletedAt         `gorm:"index" json:"deleted_at"`
+	TenancyDbUsername string                 `gorm:"size:500" json:"tenancy_db_username"`
+	TenancyDbPassword string                 `gorm:"size:500" json:"tenancy_db_password"`
+	KeyPath           string                 `json:"key_path"`
+	Data              string                 `gorm:"type:json" json:"data"`
+	attributes        map[string]interface{} `gorm:"-"`
 }
 
 func (t *Tenant) TableName() string {
@@ -48,6 +50,10 @@ func (t *Tenant) GetInternal(key string) interface{} {
 		return t.Data
 	}
 
+	if val, ok := t.attributes[lowerKey]; ok {
+		return val
+	}
+
 	return nil
 }
 
@@ -72,10 +78,12 @@ func (t *Tenant) SetInternal(key string, value interface{}) {
 	case "data":
 		t.Data = value.(string)
 	}
+
+	t.attributes[lowerKey] = value
 }
 
 func (t *Tenant) GetAttributes() map[string]interface{} {
-	var attributes = map[string]interface{}{
+	var defaultAttributes = map[string]interface{}{
 		"id":                  t.ID,
 		"created_at":          t.CreatedAt,
 		"updated_at":          t.UpdatedAt,
@@ -86,7 +94,11 @@ func (t *Tenant) GetAttributes() map[string]interface{} {
 		"data":                t.Data,
 	}
 
-	return attributes
+	for k, val := range defaultAttributes {
+		t.attributes[k] = val
+	}
+
+	return t.attributes
 }
 
 func (t *Tenant) GetTenantKeyName() string {
@@ -99,4 +111,8 @@ func (t *Tenant) GetTenantKey() interface{} {
 
 func (t *Tenant) Run(callback func(args ...interface{}) (interface{}, error)) (interface{}, error) {
 	return callback(t)
+}
+
+func (t *Tenant) InternalPrefix() string {
+	return "tenancy_"
 }

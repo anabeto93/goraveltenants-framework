@@ -6,4 +6,5 @@ type Tenancy interface {
 	End() error
 	GetBootstrappers() []TenancyBootstrapper
 	RunForMultiple(tenants []interface{}, callback func(tenant Tenant) error) error
+	GetCurrentTenant(key ...interface{}) Tenant
 }

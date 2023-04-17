@@ -3,18 +3,16 @@ package models
 import (
 	"github.com/anabeto93/goraveltenants/contracts"
 	"github.com/anabeto93/goraveltenants/events"
+	"github.com/anabeto93/goraveltenants/facades"
 	"github.com/goravel/framework/contracts/event"
-	"github.com/goravel/framework/facades"
+	frameworkfacades "github.com/goravel/framework/facades"
 )
 
-var _ contracts.ResourceSyncer = &BaseResourceSyncing{}
-
-type BaseResourceSyncing struct{}
-
-func (brs *BaseResourceSyncing) GetGlobalIdentifierKeyName() string {
-	return "id"
-}
-
-func (brs *BaseResourceSyncing) TriggerSyncEvent() {
-	_ = facades.Event.Job(events.NewSyncedResourceSaved(currentEvent.GetTenant()), []event.Arg{}).Dispatch()
+func TriggerSyncEvent(model contracts.Syncable) {
+	currentTenant := facades.Tenancy.GetCurrentTenant()
+	tenantWithDb, ok := currentTenant.(contracts.TenantWithDatabase)
+	if !ok {
+		tenantWithDb = NewBaseTenantWithDatabase(currentTenant.(*Tenant))
+	}
+	_ = frameworkfacades.Event.Job(events.NewSyncedResourceSaved(model, tenantWithDb), []event.Arg{}).Dispatch()
 }

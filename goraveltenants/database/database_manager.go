@@ -2,21 +2,21 @@ package database
 
 import (
 	"database/sql"
-	"errors"
+	"github.com/anabeto93/goraveltenants/exceptions"
 	"sync"
 
-	"github.com/goravel/framework/facades"
 	"github.com/anabeto93/goraveltenants/contracts"
+	"github.com/goravel/framework/facades"
 )
 
 type DatabaseManager struct {
-	connections map[string]*sql.DB
+	connections map[string]interface{}
 	mu          sync.Mutex
 }
 
 func NewDatabaseManager() *DatabaseManager {
 	return &DatabaseManager{
-		connections: make(map[string]*sql.DB),
+		connections: make(map[string]interface{}),
 	}
 }
 
@@ -45,25 +45,29 @@ func (dm *DatabaseManager) PurgeTenantConnection() {
 	if exists := facades.Config.Get("database.connections.tenant"); exists != nil {
 		dm.mu.Lock()
 		if conn, ok := dm.connections["tenant"]; ok {
-			conn.Close()
+			if sqlConn, ok := conn.(*sql.DB); ok {
+				_ = sqlConn.Close()
+			}
 			delete(dm.connections, "tenant")
 		}
 		dm.mu.Unlock()
 	}
-		
+
 	facades.Config.Add("database.connections.tenant", nil)
 }
 
 func (dm *DatabaseManager) EnsureTenantCanBeCreated(tenant contracts.TenantWithDatabase) error {
 	manager := tenant.Database().Manager()
 
-	if manager.DatabaseExists(database := tenant.Database().GetName()) {
-		return &TenantDatabaseAlreadyExistsException{DatabaseName: database}
+	database := tenant.Database().GetName()
+	if manager.DatabaseExists(database) {
+		return exceptions.NewTenantDatabaseAlreadyExistsException(database)
 	}
 
 	if userMgr, ok := manager.(contracts.ManagesDatabaseUsers); ok {
-		if userMgr.UserExists(username := tenant.Database().GetUsername()) {
-			return &TenantDatabaseUserAlreadyExistsException{Username: username}
+		username := tenant.Database().GetUsername()
+		if userMgr.UserExists(username) {
+			return exceptions.NewTenantDatabaseUserAlreadyExistsException(username)
 		}
 	}
 

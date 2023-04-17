@@ -1,6 +1,7 @@
-package goraveltenants
+package database
 
 import (
+	"github.com/anabeto93/goraveltenants"
 	"strings"
 
 	"github.com/anabeto93/goraveltenants/contracts"
@@ -22,10 +23,10 @@ func NewDatabaseConfig(tenant contracts.Tenant) *DatabaseConfig {
 	return &DatabaseConfig{
 		tenant: tenant,
 		usernameGenerator: func(args ...interface{}) (string, error) {
-			return GenerateSecureRandomString(16)
+			return goraveltenants.GenerateSecureRandomString(16)
 		},
 		passwordGenerator: func(args ...interface{}) (string, error) {
-			return GenerateSecureRandomString(32)
+			return goraveltenants.GenerateSecureRandomString(32)
 		},
 		databaseNameGenerator: func(args ...interface{}) (string, error) {
 			currentTenant := args[0].(contracts.Tenant)
@@ -77,7 +78,10 @@ func (dc *DatabaseConfig) MakeCredentials() {
 }
 
 func (dc *DatabaseConfig) GetTemplateConnectionName() string {
-	conn := dc.tenant.GetInternal("db_connection").(string)
+	conn, ok := dc.tenant.GetInternal("db_connection").(string)
+	if !ok {
+		conn = ""
+	}
 
 	if strings.TrimSpace(conn) == "" {
 		conn = facades.Config.GetString("tenancy.database.template_tenant_connection")
@@ -103,19 +107,65 @@ func (dc *DatabaseConfig) Connection() map[string]interface{} {
 
 func (dc *DatabaseConfig) TenantConfig() map[string]interface{} {
 	var keys []string
-	for key, _ := range dc.tenant.GetAttributes() {
-		if strings.HasPrefix(key, "db_") {
+	internalTenant, ok := dc.tenant.(contracts.HasInternalKeys)
+	internalPrefix := "db_"
+	if ok {
+		internalPrefix = internalTenant.InternalPrefix() + "db_"
+	}
+
+	for key := range dc.tenant.GetAttributes() {
+		if strings.HasPrefix(key, internalPrefix) {
 			keys = append(keys, key)
 		}
 	}
 
+	keys = removeKey(keys, internalPrefix+"name")
+	keys = removeKey(keys, internalPrefix+"connection")
+
 	result := make(map[string]interface{})
 	for _, key := range keys {
-		result[strings.TrimPrefix(key, "db_")] = dc.tenant.GetInternal(key)
+		result[strings.TrimPrefix(key, internalPrefix)] = dc.tenant.GetInternal(key)
 	}
 
 	return result
 }
+
+/*func (dc *DatabaseConfig) TenantConfig() map[string]interface{} {
+	var keys []string
+	internalTenant, ok := dc.tenant.(contracts.HasInternalKeys)
+	var result map[string]interface{}
+	if !ok {
+		for key, _ := range dc.tenant.GetAttributes() {
+			if strings.HasPrefix(key, "db_") {
+				keys = append(keys, key)
+			}
+		}
+
+		keys = removeKey(keys, "db_name")
+		keys = removeKey(keys, "db_connection")
+
+		result = make(map[string]interface{})
+		for _, key := range keys {
+			result[strings.TrimPrefix(key, "db_")] = dc.tenant.GetInternal(key)
+		}
+	} else {
+		for key, _ := range dc.tenant.GetAttributes() {
+			if strings.HasPrefix(key, internalTenant.InternalPrefix()+"db_") {
+				keys = append(keys, key)
+			}
+		}
+
+		keys = removeKey(keys, internalTenant.InternalPrefix()+"db_name")
+		keys = removeKey(keys, internalTenant.InternalPrefix()+"db_connection")
+
+		result = make(map[string]interface{})
+		for _, key := range keys {
+			result[strings.TrimPrefix(key, internalTenant.InternalPrefix()+"db_")] = dc.tenant.GetInternal(key)
+		}
+	}
+
+	return result
+}*/
 
 func (dc *DatabaseConfig) Manager() contracts.TenantDatabaseManager {
 	driver := facades.Config.GetString("database.connections." + dc.GetTemplateConnectionName() + ".driver")
@@ -156,4 +206,28 @@ func (dc *DatabaseConfig) GenerateDatabaseNameUsing(databaseNameGenerator func(a
 
 func (dc *DatabaseConfig) GenerateUsernameUsing(usernameGenerator func(args ...interface{}) (string, error)) {
 	dc.usernameGenerator = usernameGenerator
+}
+
+func MergeConfigMaps(first map[string]interface{}, second map[string]interface{}) map[string]interface{} {
+	for key, val := range second {
+		first[key] = val
+	}
+
+	return first
+}
+
+func removeKey(keys []string, keyToRemove string) []string {
+	index := -1
+	for i, key := range keys {
+		if key == keyToRemove {
+			index = i
+			break
+		}
+	}
+
+	if index != -1 {
+		keys = append(keys[:index], keys[index+1:]...)
+	}
+
+	return keys
 }

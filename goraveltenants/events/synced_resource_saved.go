@@ -24,3 +24,11 @@ func NewSyncedResourceSaved(model contracts.Syncable, tenant contracts.TenantWit
 		tenant: tenant,
 	}
 }
+
+func (sr *SyncedResourceSaved) GetModel() contracts.Syncable {
+	return sr.model
+}
+
+func (sr *SyncedResourceSaved) GetTenant() contracts.TenantWithDatabase {
+	return sr.tenant
+}

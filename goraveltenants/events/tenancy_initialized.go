@@ -15,6 +15,6 @@ func (bt *TenancyInitialized) Name() string {
 	return "TenancyInitialized"
 }
 
-func NewTenancyInitializedEvent(tenant contracts.Tenant) *TenancyInitialized {
+func NewTenancyInitializedEvent(tenant contracts.Tenancy) *TenancyInitialized {
 	return eventcontracts.NewTenancyEvent("TenancyInitialized", tenant).(*TenancyInitialized)
 }

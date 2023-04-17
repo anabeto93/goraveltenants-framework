@@ -1,10 +1,13 @@
 package listeners
 
 import (
+	"github.com/anabeto93/goraveltenants/contracts"
 	"github.com/anabeto93/goraveltenants/events"
 	"github.com/goravel/framework/contracts/event"
 	"github.com/goravel/framework/facades"
 )
+
+var _ contracts.Listener = &BootstrapTenancy{}
 
 type BootstrapTenancy struct {
 	event events.TenancyInitialized
@@ -22,4 +25,8 @@ func (bt *BootstrapTenancy) Handle(args ...interface{}) error {
 
 	_ = facades.Event.Job(events.NewTenancyBootstrappedEvent(currentEvent.GetTenant()), []event.Arg{}).Dispatch()
 	return nil
+}
+
+func (bt *BootstrapTenancy) Name() string {
+	return "BootstrapTenancy"
 }

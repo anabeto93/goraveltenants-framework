@@ -24,11 +24,3 @@ func GenerateSecureRandomString(length int) (string, error) {
 
 	return base64.URLEncoding.EncodeToString(randomBytes)[:length], nil
 }
-
-func MergeConfigMaps(first map[string]interface{}, second map[string]interface{}) map[string] interface{} {
-	for key, val := range second {
-		first[key] = val
-	}
-
-	return first
-}

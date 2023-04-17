@@ -28,7 +28,7 @@ func (m *SQLiteDatabaseManager) CreateDatabase(tenant contracts.TenantWithDataba
 	if err != nil {
 		return false
 	}
-	defer file.Close()
+	_ = file.Close()
 	return true
 }
 
