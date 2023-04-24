@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/anabeto93/goraveltenants"
 	"github.com/goravel/framework/auth"
 	"github.com/goravel/framework/cache"
 	"github.com/goravel/framework/console"
@@ -89,6 +90,7 @@ func init() {
 			&providers.QueueServiceProvider{},
 			&providers.EventServiceProvider{},
 			&providers.ValidationServiceProvider{},
+			&goraveltenants.TenancyServiceProvider{},
 		},
 	})
 }

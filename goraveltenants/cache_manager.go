@@ -3,9 +3,10 @@ package goraveltenants
 import (
 	"errors"
 	"fmt"
-	"github.com/goravel/framework/cache"
-	"github.com/goravel/framework/facades"
 	"github.com/anabeto93/goraveltenants/facades"
+	"github.com/goravel/framework/cache"
+	frameworkfacades "github.com/goravel/framework/facades"
+	"github.com/goravel/framework/foundation"
 )
 
 type TenantCacheManager struct {
@@ -38,6 +39,8 @@ func (tcm *TenantCacheManager) Call(method string, parameters ...interface{}) (i
 
 		names := parameters[0].([]string)
 		tags = append(tags, names...)
+
+		frameworkfacades.Cache.
 
 		return tcm.app.Cache().Tags(tags), nil
 	}

@@ -37,5 +37,5 @@ func (b *CacheTenancyBootstrapper) Revert() {
 }
 
 func (b *CacheTenancyBootstrapper) resetFacadeCache() {
-	cache.Flush()
+	b.originalCache.Flush()
 }

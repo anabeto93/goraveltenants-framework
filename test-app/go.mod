@@ -3,6 +3,7 @@ module goravel
 go 1.18
 
 require (
+	github.com/anabeto93/goraveltenants v0.0.0-00010101000000-000000000000
 	github.com/goravel/framework v1.10.0
 	google.golang.org/grpc v1.50.1
 )
@@ -175,7 +176,7 @@ require (
 	gorm.io/driver/postgres v1.4.6 // indirect
 	gorm.io/driver/sqlite v1.4.4 // indirect
 	gorm.io/driver/sqlserver v1.4.2 // indirect
-	gorm.io/gorm v1.24.5 // indirect
+	gorm.io/gorm v1.25.0 // indirect
 	gorm.io/plugin/dbresolver v1.4.1 // indirect
 )
 
