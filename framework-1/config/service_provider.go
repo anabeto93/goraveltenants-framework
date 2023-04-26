@@ -2,12 +2,14 @@ package config
 
 import (
 	"flag"
-
+	"github.com/goravel/framework/contracts"
+	foundationcontract "github.com/goravel/framework/contracts/foundation"
 	"github.com/goravel/framework/facades"
 	"github.com/goravel/framework/support"
 )
 
 type ServiceProvider struct {
+	app foundationcontract.Application
 }
 
 func (config *ServiceProvider) Register() {
@@ -24,4 +26,21 @@ func (config *ServiceProvider) Register() {
 
 func (config *ServiceProvider) Boot() {
 
+}
+
+func (config *ServiceProvider) Name() string {
+	return "ConfigServiceProvider"
+}
+
+func (config *ServiceProvider) CallBootingCallbacks() {
+	//TODO implement me
+}
+
+func (config *ServiceProvider) CallBootedCallbacks() {
+	//TODO implement me
+}
+
+func (config *ServiceProvider) NewInstance(application foundationcontract.Application) contracts.ServiceProvider {
+	config.app = application
+	return config
 }

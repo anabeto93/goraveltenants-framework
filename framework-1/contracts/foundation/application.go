@@ -18,18 +18,18 @@ type Application interface {
 	MaintenanceMode() (MaintenanceMode, error)
 	IsDownForMaintenance() (bool, error)
 	RegisterConfiguredProviders()
-	Register(provider interface{}, force *bool) ServiceProvider
-	RegisterDeferredProvider(provider string, service ...string)
-	ResolveProvider(provider string) ServiceProvider
+	Register(provider interface{}, force *bool) (ServiceProvider, error)
+	RegisterDeferredProvider(provider string, service *string) error
+	ResolveProvider(provider string) (ServiceProvider, error)
 	Boot()
-	Booting(callback func())
-	Booted(callback func())
-	BootstrapWith(bootstrappers []interface{})
+	Booting(callback func(...interface{}))
+	Booted(callback func(...interface{}))
+	BootstrapWith(bootstrappers []interface{ Bootstrap(app Application) })
 	GetLocale() string
 	GetNamespace() (string, error)
 	GetProviders(provider interface{}) []ServiceProvider
 	HasBeenBootstrapped() bool
-	LoadDeferredProviders()
+	LoadDeferredProviders() error
 	SetLocale(locale string)
 	ShouldSkipMiddleware() bool
 	Terminating(callback interface{})

@@ -1,12 +1,14 @@
 package foundation
 
 import (
+	"fmt"
 	"github.com/goravel/framework/container"
 	containercontract "github.com/goravel/framework/contracts/container"
 	foundationcontract "github.com/goravel/framework/contracts/foundation"
 	"github.com/goravel/framework/filesystem"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/goravel/framework/config"
@@ -272,24 +274,164 @@ func (app *Application) isDeferredService(abstract string) bool {
 	return ok
 }
 
-func (app *Application) LoadDeferredProviders() {
+func (app *Application) LoadDeferredProviders() error {
 	currentServices := app.deferredServices
 
 	for name, _ := range currentServices {
-		app.loadDeferredProvider(name)
+		if err := app.loadDeferredProvider(name); err != nil {
+			return err
+		}
 	}
 
 	app.deferredServices = make(map[string]contracts.ServiceProvider)
+	return nil
 }
 
-func (app *Application) loadDeferredProvider(abstract string) {
+func (app *Application) loadDeferredProvider(abstract string) error {
 	if !app.isDeferredService(abstract) {
-		return
+		return nil
 	}
 
 	provider := app.deferredServices[abstract]
 	var isLoaded bool
-	_, loaded := app.loadedProviders[]
+	if loaded, found := app.loadedProviders[provider.Name()]; !found {
+		isLoaded = false
+	} else {
+		isLoaded = loaded
+	}
+
+	if !isLoaded {
+		return app.RegisterDeferredProvider(provider, &abstract)
+	}
+	return nil
+}
+
+func (app *Application) RegisterDeferredProvider(provider contracts.ServiceProvider, service *string) error {
+	if service != nil {
+		if _, ok := app.deferredServices[*service]; ok {
+			delete(app.deferredServices, *service)
+		}
+	}
+
+	instance := provider.NewInstance(app)
+	notForced := false
+	tempInstance, err := app.Register(instance, &notForced)
+	if err != nil {
+		return err
+	}
+	instance = tempInstance
+
+	if !app.isBooted() {
+		app.Booting(func(args ...interface{}) {
+			app.bootProvider(instance)
+		})
+	}
+	return nil
+}
+
+func (app *Application) Booting(callback func(params ...interface{})) {
+	app.bootingCallbacks = append(app.bootedCallbacks, callback)
+}
+
+func (app *Application) Booted(callback func(params ...interface{})) {
+	app.bootedCallbacks = append(app.bootedCallbacks, callback)
+
+	if app.isBooted() {
+		callback(app)
+	}
+}
+
+func (app *Application) fireAppCallbacks(callbacks []func(...interface{})) {
+	for _, callback := range callbacks {
+		callback(app)
+	}
+}
+
+func (app *Application) Register(provider interface{}, force *bool) (contracts.ServiceProvider, error) {
+	if registered := app.getProvider(provider); registered != nil && *force == false {
+		return registered, nil
+	}
+	var providerFound contracts.ServiceProvider
+	if providerName, ok := provider.(string); ok {
+		tempProvider, err := app.ResolveProvider(providerName)
+		if err != nil {
+			return nil, err
+		}
+		providerFound = tempProvider
+	} else {
+		providerFound = provider.(contracts.ServiceProvider)
+	}
+
+	// If there are bindings / singletons set as properties on the provider we
+	// will spin through them and register them with the application, which
+	// serves as a convenience layer while registering a lot of bindings.
+	providerType := reflect.TypeOf(providerFound)
+
+	bindingsField, bindingsExist := providerType.FieldByName("bindings")
+	singletonsField, singletonsExist := providerType.FieldByName("singletons")
+
+	if bindingsExist {
+		value := reflect.ValueOf(providerFound).FieldByName(bindingsField.Name)
+		bindings := value.Interface().(map[string]interface{})
+
+		for key, val := range bindings {
+			if err := app.Bind(key, val, false); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if singletonsExist {
+		value := reflect.ValueOf(providerFound).FieldByName(singletonsField.Name)
+		singletons := value.Interface().(map[string]interface{})
+
+		for key, val := range singletons {
+			if err := app.Singleton(key, val); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	app.markAsRegistered(providerFound)
+
+	// If the application has already booted, we will call this boot method on
+	// the provider class so it has an opportunity to do its boot logic and
+	// will be ready for any usage by this developer's application logic.
+	if app.isBooted() {
+		app.bootProvider(providerFound)
+	}
+
+	return providerFound, nil
+}
+
+// getProvider Get the registered service provider instance if it exists
+func (app *Application) getProvider(provider interface{}) contracts.ServiceProvider {
+	providers := app.GetProviders(provider)
+	if len(providers) > 0 {
+		return providers[0]
+	}
+	return nil
+}
+
+// GetProviders Get the registered service provider instances if any exist
+func (app *Application) GetProviders(provider interface{}) []contracts.ServiceProvider {
+	var name string
+	switch provider.(type) {
+	case string:
+		name = provider.(string)
+	case contracts.ServiceProvider:
+		p := provider.(contracts.ServiceProvider)
+		name = p.Name()
+	}
+	var providers []contracts.ServiceProvider
+
+	for _, pvd := range app.serviceProviders {
+		if pvd.Name() == name {
+			providers = append(providers, pvd)
+		}
+	}
+
+	return providers
 }
 
 func (app *Application) bootProvider(provider contracts.ServiceProvider) {
@@ -300,6 +442,21 @@ func (app *Application) bootProvider(provider contracts.ServiceProvider) {
 	provider.CallBootedCallbacks()
 }
 
+func (app *Application) ResolveProvider(provider string) (contracts.ServiceProvider, error) {
+	providerType := reflect.TypeOf(provider)
+	if providerType == nil {
+		return nil, fmt.Errorf("could not find provider with name: %s", provider)
+	}
+
+	providerValue := reflect.New(providerType)
+	providerSrv, ok := providerValue.Interface().(contracts.ServiceProvider)
+	if !ok {
+		return nil, fmt.Errorf("provider %s does not implement ServiceProvider", provider)
+	}
+
+	return providerSrv.NewInstance(app), nil
+}
+
 func (app *Application) markAsRegistered(provider contracts.ServiceProvider) {
 	currentProviders := app.serviceProviders
 	currentProviders = append(currentProviders, provider)
@@ -308,9 +465,33 @@ func (app *Application) markAsRegistered(provider contracts.ServiceProvider) {
 	app.loadedProviders[provider.Name()] = true
 }
 
+// Boot the application's service providers
+func (app *Application) Boot() {
+	if app.isBooted() {
+		return
+	}
+
+	// Once the application has booted we will also fire some "booted" callbacks
+	// for any listeners that need to do work after this initial booting gets
+	// finished. This is useful when ordering the boot-up processes we run.
+	app.fireAppCallbacks(app.bootingCallbacks)
+
+	for _, provider := range app.serviceProviders {
+		app.bootProvider(provider)
+	}
+
+	app.booted = true
+
+	app.fireAppCallbacks(app.bootedCallbacks)
+}
+
+func (app *Application) BootstrapWith(bootstrappers []interface{ Bootstrap(app Application) }) {
+
+}
+
 // Boot Register and bootstrap configured service providers.
 func (app *Application) Bootx() {
-	app.registerConfiguredServiceProviders()
+	app.RegisterConfiguredServiceProviders()
 	app.bootConfiguredServiceProviders()
 
 	app.bootArtisan()
@@ -344,8 +525,8 @@ func (app *Application) bootBaseServiceProviders() {
 	app.bootServiceProviders(app.getBaseServiceProviders())
 }
 
-// registerConfiguredServiceProviders Register configured service providers.
-func (app *Application) registerConfiguredServiceProviders() {
+// RegisterConfiguredServiceProviders Register configured service providers.
+func (app *Application) RegisterConfiguredServiceProviders() {
 	app.registerServiceProviders(app.getConfiguredServiceProviders())
 }
 

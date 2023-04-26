@@ -14,5 +14,5 @@ type ServiceProvider interface {
 	//CallBootedCallbacks calls the booted callbacks
 	CallBootedCallbacks()
 	//NewInstance returns an instance of the service provider with app defined
-	NewInstance(application foundationcontract.Application)
+	NewInstance(application foundationcontract.Application) ServiceProvider
 }
