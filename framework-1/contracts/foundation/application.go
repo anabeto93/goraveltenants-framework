@@ -26,7 +26,6 @@ type Application interface {
 	Booted(callback func(...interface{}))
 	BootstrapWith(bootstrappers []interface{ Bootstrap(app Application) })
 	GetLocale() string
-	GetNamespace() (string, error)
 	GetProviders(provider interface{}) []ServiceProvider
 	HasBeenBootstrapped() bool
 	LoadDeferredProviders() error

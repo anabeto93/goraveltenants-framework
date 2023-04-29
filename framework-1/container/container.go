@@ -203,7 +203,7 @@ func (c *Container) Extend(abstract string, closure func(...interface{}) (interf
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	abstract = c.getAlias(abstract)
+	abstract = c.GetAlias(abstract)
 
 	var err error
 	if instance, ok := c.instances[abstract]; ok {
@@ -224,7 +224,7 @@ func (c *Container) Extend(abstract string, closure func(...interface{}) (interf
 
 func (c *Container) Resolved(abstract string) bool {
 	if c.isAlias(abstract) {
-		abstract = c.getAlias(abstract)
+		abstract = c.GetAlias(abstract)
 	}
 
 	if _, ok := c.resolved[abstract]; ok {
@@ -244,7 +244,7 @@ func (c *Container) AddContextualBinding(concrete, abstract string, implementati
 		c.contextualBindings[concrete] = make(map[string]interface{})
 	}
 
-	abstractAlias := c.getAlias(abstract)
+	abstractAlias := c.GetAlias(abstract)
 	c.contextualBindings[concrete][abstractAlias] = implementation
 	return nil
 }
@@ -253,7 +253,7 @@ func (c *Container) When(concretes ...interface{}) containercontract.ContextualB
 	var aliases []interface{}
 
 	for _, impl := range arrayWrap(concretes) {
-		aliases = append(aliases, c.getAlias(impl.(string)))
+		aliases = append(aliases, c.GetAlias(impl.(string)))
 	}
 	builder := NewContextualBindingBuilder(c, aliases)
 	return builder
@@ -302,7 +302,7 @@ func (c *Container) BeforeResolving(abstract interface{}, callback *func(string,
 
 	switch v := abstract.(type) {
 	case string:
-		key = c.getAlias(v)
+		key = c.GetAlias(v)
 	case func(...interface{}) error:
 		typedCallback := func(args ...interface{}) interface{} {
 			currentCallback := abstract.(func(...interface{}) error)
@@ -335,7 +335,7 @@ func (c *Container) Resolving(abstract interface{}, callback *func(string, conta
 
 	switch v := abstract.(type) {
 	case string:
-		key = c.getAlias(v)
+		key = c.GetAlias(v)
 	case func(...interface{}) error:
 		typedCallback := func(args ...interface{}) interface{} {
 			currentCallback := abstract.(func(...interface{}) interface{})
@@ -367,7 +367,7 @@ func (c *Container) AfterResolving(abstract interface{}, callback *func(string, 
 
 	switch v := abstract.(type) {
 	case string:
-		key = c.getAlias(v)
+		key = c.GetAlias(v)
 	case func(...interface{}) error:
 		typedCallback := func(args ...interface{}) interface{} {
 			currentCallback := abstract.(func(...interface{}) interface{})
@@ -468,9 +468,9 @@ func (c *Container) isAlias(abstract string) bool {
 	return ok
 }
 
-func (c *Container) getAlias(abstract string) string {
+func (c *Container) GetAlias(abstract string) string {
 	if alias, ok := c.aliases[abstract]; ok {
-		return c.getAlias(alias)
+		return c.GetAlias(alias)
 	}
 
 	return abstract
@@ -656,7 +656,7 @@ func (c *Container) isBuildable(concrete interface{}, abstract string) bool {
 }
 
 func (c *Container) getExtenders(abstract string) []func(...interface{}) (interface{}, error) {
-	abstractAlias := c.getAlias(abstract)
+	abstractAlias := c.GetAlias(abstract)
 	if extenders, ok := c.extenders[abstractAlias]; ok {
 		return extenders
 	}
@@ -664,7 +664,7 @@ func (c *Container) getExtenders(abstract string) []func(...interface{}) (interf
 }
 
 func (c *Container) forgetExtenders(abstract string) {
-	abstractAlias := c.getAlias(abstract)
+	abstractAlias := c.GetAlias(abstract)
 	delete(c.extenders, abstractAlias)
 }
 
@@ -681,4 +681,28 @@ func (c *Container) removeAbstractAlias(searched string) {
 			}
 		}
 	}
+}
+
+func (c *Container) SetResolvingCallbacks(callbacks map[string][]func(...interface{}) interface{}) {
+	c.resolvingCallbacks = callbacks
+}
+
+func (c *Container) SetBeforeResolvingCallbacks(callbacks map[string][]func(...interface{}) interface{}) {
+	c.beforeResolvingCallbacks = callbacks
+}
+
+func (c *Container) SetAfterResolvingCallbacks(callbacks map[string][]func(...interface{}) interface{}) {
+	c.afterResolvingCallbacks = callbacks
+}
+
+func (c *Container) SetGlobalResolvingCallbacks(callbacks []func(...interface{}) interface{}) {
+	c.globalResolvingCallbacks = callbacks
+}
+
+func (c *Container) SetGlobalBeforeResolvingCallbacks(callbacks []func(...interface{}) interface{}) {
+	c.globalBeforeResolvingCallbacks = callbacks
+}
+
+func (c *Container) SetGlobalAfterResolvingCallbacks(callbacks []func(...interface{}) interface{}) {
+	c.globalAfterResolvingCallbacks = callbacks
 }

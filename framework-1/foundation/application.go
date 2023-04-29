@@ -159,6 +159,25 @@ func (app *Application) Environment(environments ...string) (string, bool) {
 	return "", false
 }
 
+func (app *Application) IsLocal() bool {
+	str := support.Env
+	if str != "" {
+		return str == "local"
+	}
+	env := facades.Config.GetString("app.env")
+	return env == "local"
+}
+
+func (app *Application) IsProduction() bool {
+	str := support.Env
+	if str != "" {
+		return str == "production"
+	}
+
+	env := facades.Config.GetString("app.env")
+	return env == "production"
+}
+
 func (app *Application) RunningInConsole() bool {
 	if app.isRunningInConsole != nil {
 		return *app.isRunningInConsole
@@ -178,6 +197,20 @@ func (app *Application) RunningUnitTests() bool {
 		}
 	}
 	return false
+}
+
+func (app *Application) Make(abstract string, parameters ...interface{}) (interface{}, error) {
+	abstract = app.GetAlias(abstract)
+	app.loadDeferredProviderIfNeeded(abstract)
+
+	return app.Container.Make(abstract, parameters...)
+}
+
+func (app *Application) Resolve(abstract string, raiseEvents bool, parameters ...interface{}) (interface{}, error) {
+	abstract = app.GetAlias(abstract)
+	app.loadDeferredProviderIfNeeded(abstract)
+
+	return app.Container.Resolve(abstract, raiseEvents, parameters...)
 }
 
 func (app *Application) MaintenanceMode() (foundationcontract.MaintenanceMode, error) {
@@ -228,6 +261,18 @@ func (app *Application) registerCoreContainerAliases() {
 	}
 }
 
+func (app *Application) Terminating(callback func(...interface{})) {
+	callbacks := app.terminatingCallbacks
+	callbacks = append(callbacks, callback)
+	app.terminatingCallbacks = callbacks
+}
+
+func (app *Application) Terminate() {
+	for _, callback := range app.terminatingCallbacks {
+		_, _ = app.Call(callback)
+	}
+}
+
 func (app *Application) getLoadedProviders() map[string]bool {
 	return app.loadedProviders
 }
@@ -256,8 +301,57 @@ func (app *Application) addDeferredServices(services map[string]contracts.Servic
 	app.deferredServices = currentServices
 }
 
+func (app *Application) Bound(abstract string) bool {
+	isDeferred := app.isDeferredService(abstract)
+	isBound := app.Container.Bound(abstract)
+
+	return isDeferred || isBound
+}
+
 func (app *Application) isBooted() bool {
 	return app.booted
+}
+
+func (app *Application) GetLocale() string {
+	return facades.Config.GetString("app.locale")
+}
+
+func (app *Application) CurrentLocale() string {
+	return app.GetLocale()
+}
+
+func (app *Application) GetFallbackLocale() string {
+	return facades.Config.GetString("app.fallback_locale")
+}
+
+func (app *Application) SetLocale(locale string) {
+	facades.Config.Add("app.locale", locale)
+	// TODO: set translator locale
+	// TODO: dispatch LocaleUpdated event
+}
+
+func (app *Application) SetFallbackLocale(fallbackLocal string) {
+	facades.Config.Add("app.fallback_locale", fallbackLocal)
+	// TODO: set translator fallback locale
+}
+
+func (app *Application) IsLocale(locale string) bool {
+	return app.GetLocale() == locale
+}
+
+// ShouldSkipMiddleware Determine if middleware has been disabled for the application
+func (app *Application) ShouldSkipMiddleware() bool {
+	isBound := app.Bound("middleware.disable")
+	if !isBound {
+		return false
+	}
+
+	disabled, err := app.Make("middleware.disable")
+	if err != nil {
+		return false
+	}
+	disabledMiddleware := disabled.(bool)
+	return isBound && disabledMiddleware == true
 }
 
 func (app *Application) loadDeferredProviderIfNeeded(abstract string) {
@@ -265,7 +359,7 @@ func (app *Application) loadDeferredProviderIfNeeded(abstract string) {
 	notAnInstance := !app.IsInstance(abstract)
 
 	if isDeferred && notAnInstance {
-		app.loadDeferredProvider(abstract)
+		_ = app.loadDeferredProvider(abstract)
 	}
 }
 
@@ -485,7 +579,40 @@ func (app *Application) Boot() {
 	app.fireAppCallbacks(app.bootedCallbacks)
 }
 
+func (app *Application) Flush() error {
+	if err := app.Container.Flush(); err != nil {
+		return err
+	}
+
+	app.loadedProviders = make(map[string]bool)
+	app.bootedCallbacks = []func(...interface{}){}
+	app.bootingCallbacks = []func(...interface{}){}
+	app.deferredServices = make(map[string]contracts.ServiceProvider)
+	app.serviceProviders = []contracts.ServiceProvider{}
+	app.SetResolvingCallbacks(make(map[string][]func(...interface{}) interface{}))
+	app.terminatingCallbacks = []func(...interface{}){}
+	app.SetBeforeResolvingCallbacks(make(map[string][]func(...interface{}) interface{}))
+	app.SetAfterResolvingCallbacks(make(map[string][]func(...interface{}) interface{}))
+	app.SetGlobalBeforeResolvingCallbacks([]func(...interface{}) interface{}{})
+	app.SetGlobalResolvingCallbacks([]func(...interface{}) interface{}{})
+	app.SetGlobalAfterResolvingCallbacks([]func(...interface{}) interface{}{})
+
+	return nil
+}
+
 func (app *Application) BootstrapWith(bootstrappers []interface{ Bootstrap(app Application) }) {
+	app.hasBeenBootstrapped = true
+
+	for _, bootstrapper := range bootstrappers {
+
+	}
+}
+
+func (app *Application) HasBeenBootstrapped() bool {
+	return app.hasBeenBootstrapped
+}
+
+func (app *Application) dispatchEvent(eventName string) {
 
 }
 
