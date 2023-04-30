@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/goravel/framework/config"
-	"github.com/goravel/framework/contracts"
 	"github.com/goravel/framework/facades"
 	"github.com/goravel/framework/support"
 )
@@ -38,9 +37,9 @@ type Application struct {
 	bootingCallbacks     []func(...interface{})
 	bootedCallbacks      []func(...interface{})
 	terminatingCallbacks []func(...interface{})
-	serviceProviders     []contracts.ServiceProvider
+	serviceProviders     []foundationcontract.ServiceProvider
 	loadedProviders      map[string]bool
-	deferredServices     map[string]contracts.ServiceProvider
+	deferredServices     map[string]foundationcontract.ServiceProvider
 	appPath              string
 	databasePath         string
 	langPath             string
@@ -59,9 +58,9 @@ func NewApplication(basePath string) *Application {
 		bootingCallbacks:     []func(...interface{}){},
 		bootedCallbacks:      []func(...interface{}){},
 		terminatingCallbacks: []func(...interface{}){},
-		serviceProviders:     []contracts.ServiceProvider{},
+		serviceProviders:     []foundationcontract.ServiceProvider{},
 		loadedProviders:      make(map[string]bool),
-		deferredServices:     make(map[string]contracts.ServiceProvider),
+		deferredServices:     make(map[string]foundationcontract.ServiceProvider),
 		appPath:              "",
 		databasePath:         "",
 		langPath:             "",
@@ -319,15 +318,15 @@ func (app *Application) providerIsLoaded(provider string) bool {
 	return loaded
 }
 
-func (app *Application) getDeferredServices() map[string]contracts.ServiceProvider {
+func (app *Application) getDeferredServices() map[string]foundationcontract.ServiceProvider {
 	return app.deferredServices
 }
 
-func (app *Application) setDeferredServices(services map[string]contracts.ServiceProvider) {
+func (app *Application) setDeferredServices(services map[string]foundationcontract.ServiceProvider) {
 	app.deferredServices = services
 }
 
-func (app *Application) addDeferredServices(services map[string]contracts.ServiceProvider) {
+func (app *Application) addDeferredServices(services map[string]foundationcontract.ServiceProvider) {
 	currentServices := app.deferredServices
 	for name, provider := range services {
 		currentServices[name] = provider
@@ -411,7 +410,7 @@ func (app *Application) LoadDeferredProviders() error {
 		}
 	}
 
-	app.deferredServices = make(map[string]contracts.ServiceProvider)
+	app.deferredServices = make(map[string]foundationcontract.ServiceProvider)
 	return nil
 }
 
@@ -434,7 +433,7 @@ func (app *Application) loadDeferredProvider(abstract string) error {
 	return nil
 }
 
-func (app *Application) RegisterDeferredProvider(provider contracts.ServiceProvider, service *string) error {
+func (app *Application) RegisterDeferredProvider(provider foundationcontract.ServiceProvider, service *string) error {
 	if service != nil {
 		if _, ok := app.deferredServices[*service]; ok {
 			delete(app.deferredServices, *service)
@@ -475,11 +474,11 @@ func (app *Application) fireAppCallbacks(callbacks []func(...interface{})) {
 	}
 }
 
-func (app *Application) Register(provider interface{}, force *bool) (contracts.ServiceProvider, error) {
+func (app *Application) Register(provider interface{}, force *bool) (foundationcontract.ServiceProvider, error) {
 	if registered := app.getProvider(provider); registered != nil && *force == false {
 		return registered, nil
 	}
-	var providerFound contracts.ServiceProvider
+	var providerFound foundationcontract.ServiceProvider
 	if providerName, ok := provider.(string); ok {
 		tempProvider, err := app.ResolveProvider(providerName)
 		if err != nil {
@@ -487,7 +486,7 @@ func (app *Application) Register(provider interface{}, force *bool) (contracts.S
 		}
 		providerFound = tempProvider
 	} else {
-		providerFound = provider.(contracts.ServiceProvider)
+		providerFound = provider.(foundationcontract.ServiceProvider)
 	}
 
 	// If there are bindings / singletons set as properties on the provider we
@@ -533,7 +532,7 @@ func (app *Application) Register(provider interface{}, force *bool) (contracts.S
 }
 
 // getProvider Get the registered service provider instance if it exists
-func (app *Application) getProvider(provider interface{}) contracts.ServiceProvider {
+func (app *Application) getProvider(provider interface{}) foundationcontract.ServiceProvider {
 	providers := app.GetProviders(provider)
 	if len(providers) > 0 {
 		return providers[0]
@@ -542,16 +541,16 @@ func (app *Application) getProvider(provider interface{}) contracts.ServiceProvi
 }
 
 // GetProviders Get the registered service provider instances if any exist
-func (app *Application) GetProviders(provider interface{}) []contracts.ServiceProvider {
+func (app *Application) GetProviders(provider interface{}) []foundationcontract.ServiceProvider {
 	var name string
 	switch provider.(type) {
 	case string:
 		name = provider.(string)
-	case contracts.ServiceProvider:
-		p := provider.(contracts.ServiceProvider)
+	case foundationcontract.ServiceProvider:
+		p := provider.(foundationcontract.ServiceProvider)
 		name = p.Name()
 	}
-	var providers []contracts.ServiceProvider
+	var providers []foundationcontract.ServiceProvider
 
 	for _, pvd := range app.serviceProviders {
 		if pvd.Name() == name {
@@ -562,7 +561,7 @@ func (app *Application) GetProviders(provider interface{}) []contracts.ServicePr
 	return providers
 }
 
-func (app *Application) bootProvider(provider contracts.ServiceProvider) {
+func (app *Application) bootProvider(provider foundationcontract.ServiceProvider) {
 	provider.CallBootingCallbacks()
 
 	provider.Boot()
@@ -570,14 +569,14 @@ func (app *Application) bootProvider(provider contracts.ServiceProvider) {
 	provider.CallBootedCallbacks()
 }
 
-func (app *Application) ResolveProvider(provider string) (contracts.ServiceProvider, error) {
+func (app *Application) ResolveProvider(provider string) (foundationcontract.ServiceProvider, error) {
 	providerType := reflect.TypeOf(provider)
 	if providerType == nil {
 		return nil, fmt.Errorf("could not find provider with name: %s", provider)
 	}
 
 	providerValue := reflect.New(providerType)
-	providerSrv, ok := providerValue.Interface().(contracts.ServiceProvider)
+	providerSrv, ok := providerValue.Interface().(foundationcontract.ServiceProvider)
 	if !ok {
 		return nil, fmt.Errorf("provider %s does not implement ServiceProvider", provider)
 	}
@@ -585,7 +584,7 @@ func (app *Application) ResolveProvider(provider string) (contracts.ServiceProvi
 	return providerSrv.NewInstance(app), nil
 }
 
-func (app *Application) markAsRegistered(provider contracts.ServiceProvider) {
+func (app *Application) markAsRegistered(provider foundationcontract.ServiceProvider) {
 	currentProviders := app.serviceProviders
 	currentProviders = append(currentProviders, provider)
 
@@ -621,8 +620,8 @@ func (app *Application) Flush() error {
 	app.loadedProviders = make(map[string]bool)
 	app.bootedCallbacks = []func(...interface{}){}
 	app.bootingCallbacks = []func(...interface{}){}
-	app.deferredServices = make(map[string]contracts.ServiceProvider)
-	app.serviceProviders = []contracts.ServiceProvider{}
+	app.deferredServices = make(map[string]foundationcontract.ServiceProvider)
+	app.serviceProviders = []foundationcontract.ServiceProvider{}
 	app.SetResolvingCallbacks(make(map[string][]func(...interface{}) interface{}))
 	app.terminatingCallbacks = []func(...interface{}){}
 	app.SetBeforeResolvingCallbacks(make(map[string][]func(...interface{}) interface{}))
@@ -634,7 +633,10 @@ func (app *Application) Flush() error {
 	return nil
 }
 
-func (app *Application) BootstrapWith(bootstrappers []interface{ Bootstrap(app foundationcontract.Application); Name() string }) {
+func (app *Application) BootstrapWith(bootstrappers []interface {
+	Bootstrap(app foundationcontract.Application)
+	Name() string
+}) {
 	app.hasBeenBootstrapped = true
 
 	for _, bootstrapper := range bootstrappers {
@@ -667,15 +669,15 @@ func (app *Application) bootArtisan() {
 }
 
 // getBaseServiceProviders Get base service providers.
-func (app *Application) getBaseServiceProviders() []contracts.ServiceProvider {
-	return []contracts.ServiceProvider{
+func (app *Application) getBaseServiceProviders() []foundationcontract.ServiceProvider {
+	return []foundationcontract.ServiceProvider{
 		&config.ServiceProvider{},
 	}
 }
 
 // getConfiguredServiceProviders Get configured service providers.
-func (app *Application) getConfiguredServiceProviders() []contracts.ServiceProvider {
-	return facades.Config.Get("app.providers").([]contracts.ServiceProvider)
+func (app *Application) getConfiguredServiceProviders() []foundationcontract.ServiceProvider {
+	return facades.Config.Get("app.providers").([]foundationcontract.ServiceProvider)
 }
 
 // RegisterBaseServiceProviders Register base service providers.
@@ -699,14 +701,14 @@ func (app *Application) bootConfiguredServiceProviders() {
 }
 
 // registerServiceProviders Register service providers.
-func (app *Application) registerServiceProviders(serviceProviders []contracts.ServiceProvider) {
+func (app *Application) registerServiceProviders(serviceProviders []foundationcontract.ServiceProvider) {
 	for _, serviceProvider := range serviceProviders {
 		serviceProvider.Register()
 	}
 }
 
 // bootServiceProviders Bootstrap service providers.
-func (app *Application) bootServiceProviders(serviceProviders []contracts.ServiceProvider) {
+func (app *Application) bootServiceProviders(serviceProviders []foundationcontract.ServiceProvider) {
 	for _, serviceProvider := range serviceProviders {
 		serviceProvider.Boot()
 	}

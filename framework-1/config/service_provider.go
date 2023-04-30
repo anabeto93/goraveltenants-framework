@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"github.com/goravel/framework/contracts"
 	foundationcontract "github.com/goravel/framework/contracts/foundation"
 	"github.com/goravel/framework/facades"
 	"github.com/goravel/framework/support"
@@ -40,7 +39,7 @@ func (config *ServiceProvider) CallBootedCallbacks() {
 	//TODO implement me
 }
 
-func (config *ServiceProvider) NewInstance(application foundationcontract.Application) contracts.ServiceProvider {
+func (config *ServiceProvider) NewInstance(application foundationcontract.Application) foundationcontract.ServiceProvider {
 	config.app = application
 	return config
 }

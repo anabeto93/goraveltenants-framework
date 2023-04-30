@@ -19,19 +19,22 @@ type Application interface {
 	IsDownForMaintenance() (bool, error)
 	RegisterConfiguredProviders() error
 	Register(provider interface{}, force *bool) (ServiceProvider, error)
-	RegisterDeferredProvider(provider string, service *string) error
+	RegisterDeferredProvider(provider ServiceProvider, service *string) error
 	ResolveProvider(provider string) (ServiceProvider, error)
 	Boot()
 	Booting(callback func(...interface{}))
 	Booted(callback func(...interface{}))
-	BootstrapWith(bootstrappers []interface{ Bootstrap(app Application); Name()string })
+	BootstrapWith(bootstrappers []interface {
+		Bootstrap(app Application)
+		Name() string
+	})
 	GetLocale() string
 	GetProviders(provider interface{}) []ServiceProvider
 	HasBeenBootstrapped() bool
 	LoadDeferredProviders() error
 	SetLocale(locale string)
 	ShouldSkipMiddleware() bool
-	Terminating(callback interface{})
+	Terminating(callback func(...interface{}))
 	Terminate()
 	GetContainerInstance() container.Container
 	IsProduction() bool
