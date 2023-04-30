@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx7() {
 	config := facades.Config
 	config.Add("hashing", map[string]any{
 		// Hashing Driver

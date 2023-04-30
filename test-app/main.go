@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/goravel/framework/facades"
 
 	"goravel/bootstrap"
@@ -16,6 +17,8 @@ func main() {
 			facades.Log.Errorf("Route run error: %v", err)
 		}
 	}()
+
+	fmt.Printf("Listening on %s:%s", facades.Config.GetString("http.host"), facades.Config.GetString("http.port"))
 
 	select {}
 }

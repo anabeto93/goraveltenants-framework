@@ -1,12 +1,19 @@
 package providers
 
+import "github.com/goravel/framework/support"
+
 type AppServiceProvider struct {
+	*support.BaseServiceProvider
 }
 
-func (receiver *AppServiceProvider) Register() {
+func (asp *AppServiceProvider) Register() {
 
 }
 
-func (receiver *AppServiceProvider) Boot() {
+func (asp *AppServiceProvider) Boot() {
 
+}
+
+func (asp *AppServiceProvider) Name() string {
+	return "AppServiceProvider"
 }

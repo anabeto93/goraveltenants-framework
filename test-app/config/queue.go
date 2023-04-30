@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx12() {
 	config := facades.Config
 	config.Add("queue", map[string]any{
 		// Default Queue Connection Name

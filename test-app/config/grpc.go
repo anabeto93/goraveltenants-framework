@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx6() {
 	config := facades.Config
 	config.Add("grpc", map[string]any{
 		// Configure your server host

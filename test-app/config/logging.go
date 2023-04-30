@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx10() {
 	config := facades.Config
 	config.Add("logging", map[string]any{
 		// Default Log Channel

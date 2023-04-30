@@ -2,7 +2,7 @@ package config
 
 import "github.com/goravel/framework/facades"
 
-func init() {
+func initx11() {
 	config := facades.Config
 	facades.Config.Add("mail", map[string]any{
 		// SMTP Host Address

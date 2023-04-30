@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx1() {
 	config := facades.Config
 	config.Add("auth", map[string]any{
 		// Authentication Defaults

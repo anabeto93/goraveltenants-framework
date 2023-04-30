@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx2() {
 	config := facades.Config
 	config.Add("cache", map[string]any{
 		// Default Cache Store

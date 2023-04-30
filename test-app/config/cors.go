@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx3() {
 	config := facades.Config
 	config.Add("cors", map[string]any{
 		// Cross-Origin Resource Sharing (CORS) Configuration

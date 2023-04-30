@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx8() {
 	config := facades.Config
 	config.Add("http", map[string]any{
 		// HTTP URL

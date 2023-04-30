@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx5() {
 	config := facades.Config
 	config.Add("filesystems", map[string]any{
 		// Default Filesystem Disk

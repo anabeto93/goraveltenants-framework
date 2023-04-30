@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx9() {
 	config := facades.Config
 	config.Add("jwt", map[string]any{
 		// JWT Authentication Secret

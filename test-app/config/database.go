@@ -4,7 +4,7 @@ import (
 	"github.com/goravel/framework/facades"
 )
 
-func init() {
+func initx4() {
 	config := facades.Config
 	config.Add("database", map[string]any{
 		// Default database connection name, only support Mysql now.
