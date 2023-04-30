@@ -123,7 +123,7 @@ func (_m *Storage) Directories(path string) ([]string, error) {
 		}
 	}
 
-	var r1 error Exists(
+	var r1 error
 	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(path)
 	} else {

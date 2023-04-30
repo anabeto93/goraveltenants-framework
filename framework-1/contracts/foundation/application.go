@@ -17,14 +17,14 @@ type Application interface {
 	RunningUnitTests() bool
 	MaintenanceMode() (MaintenanceMode, error)
 	IsDownForMaintenance() (bool, error)
-	RegisterConfiguredProviders()
+	RegisterConfiguredProviders() error
 	Register(provider interface{}, force *bool) (ServiceProvider, error)
 	RegisterDeferredProvider(provider string, service *string) error
 	ResolveProvider(provider string) (ServiceProvider, error)
 	Boot()
 	Booting(callback func(...interface{}))
 	Booted(callback func(...interface{}))
-	BootstrapWith(bootstrappers []interface{ Bootstrap(app Application) })
+	BootstrapWith(bootstrappers []interface{ Bootstrap(app Application); Name()string })
 	GetLocale() string
 	GetProviders(provider interface{}) []ServiceProvider
 	HasBeenBootstrapped() bool

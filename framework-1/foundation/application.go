@@ -231,7 +231,7 @@ func (app *Application) IsDownForMaintenance() (bool, error) {
 	return mode.Active(), nil
 }
 
-func (app *Application) GetContainerInstance() *container.Container {
+func (app *Application) GetContainerInstance() containercontract.Container {
 	return app.Container
 }
 
@@ -259,6 +259,40 @@ func (app *Application) registerCoreContainerAliases() {
 			_ = app.Alias(key, alias)
 		}
 	}
+}
+
+func (app *Application) RegisterConfiguredProviders() error {
+	manifest, err := app.Make("PackageManifest")
+	if err != nil {
+		return fmt.Errorf("PackageManifest not found in the Application")
+	}
+	packageManifest := manifest.(*PackageManifest)
+	providers, err := packageManifest.Providers()
+	if err != nil {
+		return fmt.Errorf("error getting providers from PackageManifest: %v", err)
+	}
+	aliases, err := packageManifest.Aliases()
+	if err != nil {
+		return fmt.Errorf("error getting aliases from PackageManifest: %v", err)
+	}
+
+	// Register the providers
+	for _, provider := range providers {
+		force := false
+		_, err := app.Register(provider, &force)
+		if err != nil {
+			return fmt.Errorf("error registering provider: %v", err)
+		}
+	}
+
+	for alias, provider := range aliases {
+		err := app.Alias(alias, provider.Name())
+		if err != nil {
+			return fmt.Errorf("error registering alias: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (app *Application) Terminating(callback func(...interface{})) {
@@ -600,11 +634,13 @@ func (app *Application) Flush() error {
 	return nil
 }
 
-func (app *Application) BootstrapWith(bootstrappers []interface{ Bootstrap(app Application) }) {
+func (app *Application) BootstrapWith(bootstrappers []interface{ Bootstrap(app foundationcontract.Application); Name() string }) {
 	app.hasBeenBootstrapped = true
 
 	for _, bootstrapper := range bootstrappers {
-
+		app.dispatchEvent(fmt.Sprintf("bootstrapping: %s", bootstrapper.Name()))
+		bootstrapper.Bootstrap(app)
+		app.dispatchEvent(fmt.Sprintf("bootstrapped: %s", bootstrapper.Name()))
 	}
 }
 
